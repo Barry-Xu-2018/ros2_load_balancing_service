@@ -24,7 +24,7 @@
 
 #include "service_client_proxy.hpp"
 
-using GUID = int8_t[RMW_GID_STORAGE_SIZE];
+using WRITER_GUID = int8_t[RMW_GID_STORAGE_SIZE];
 
 template<typename T1, typename T2, typename T3>
 class QueueBase {
@@ -53,7 +53,11 @@ private:
   std::queue<Data_Type> queue_;
 };
 
-using Request_Receive_Queue = class QueueBase<GUID, int64_t, std::shared_ptr<void>>;
-using Response_Receive_Queue = class QueueBase<std::shared_ptr<ServiceClientProxy>, int64_t, std::shared_ptr<void>>;
+// The queue for ServiceServerProxy to save received request from real service client
+using Request_Receive_Queue = class QueueBase<WRITER_GUID, int64_t, std::shared_ptr<void>>;
+
+// The queue for ServiceClientProxy to save received response from real service server
+using Response_Receive_Queue =
+  class QueueBase<std::shared_ptr<ServiceClientProxy>, int64_t, std::shared_ptr<void>>;
 
 #endif  // DATA_QUEUE_HPP_
