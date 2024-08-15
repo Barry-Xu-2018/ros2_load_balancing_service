@@ -30,7 +30,7 @@ class ServiceClientProxy;
 using request_identify = std::pair<WRITER_GUID, int64_t>;
 using response_identify = std::pair<std::shared_ptr<ServiceClientProxy>, int64_t>;
 
-struct HastMethod {
+struct HashMethod {
   std::size_t operator()(const response_identify & p) const {
     auto hash1 = std::hash<std::shared_ptr<ServiceClientProxy>>{}(p.first);
     auto hash2 = std::hash<int64_t>{}(p.second);
@@ -43,22 +43,35 @@ public:
   // Insert data
   void insert(const response_identify & a, const request_identify & b)
   {
-    table_.try_emplace(a, b);
+    std::lock_guard<std::mutex> lock(table_mutex_);
+    mapping_table_.try_emplace(a, b);
   }
 
   // Get request identify via response identify
-  request_identify get_request_identify(const response_identify & response_id) const {
-      return table_.at(response_id);
+  request_identify get_request_identify(const response_identify & response_id) 
+  {
+    std::lock_guard<std::mutex> lock(table_mutex_);
+    return mapping_table_.at(response_id);
   }
 
   // Check if response identify exists
-  bool contains_response_identify(const response_identify & response_id) const {
-      return table_.find(response_id) != table_.end();
+  bool contains_response_identify(const response_identify & response_id)
+  {
+    std::lock_guard<std::mutex> lock(table_mutex_);
+    return mapping_table_.find(response_id) != mapping_table_.end();
+  }
+
+  // Remove one response identify
+  void remove_response_identify(const response_identify & response_id)
+  {
+    std::lock_guard<std::mutex> lock(table_mutex_);
+    mapping_table_.erase(response_id);
+    return;
   }
 
 private:
-  std::mutex map_mutex_;
-  std::unordered_map<response_identify, request_identify, HastMethod> table_;
+  std::mutex table_mutex_;
+  std::unordered_map<response_identify, request_identify, HashMethod> mapping_table_;
 };
 
 #endif  // REQUEST_RESPONSE_TABLE_HPP_
