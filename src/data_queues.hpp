@@ -20,9 +20,9 @@
 #include <queue>
 #include <tuple>
 
-#include <rmw/types.h>
+#include <rclcpp/rclcpp.hpp>
 
-#include "service_client_proxy.hpp"
+#include <rmw/types.h>
 
 using WRITER_GUID = int8_t[RMW_GID_STORAGE_SIZE];
 
@@ -53,11 +53,11 @@ private:
   std::queue<Data_Type> queue_;
 };
 
-// The queue for ServiceServerProxy to save received request from real service client
+// The queue for Service Server proxy to save received request from real service client
 using Request_Receive_Queue = class QueueBase<WRITER_GUID, int64_t, std::shared_ptr<void>>;
 
-// The queue for ServiceClientProxy to save received response from real service server
+// The queue for Service client proxy to save received response from real service server
 using Response_Receive_Queue =
-  class QueueBase<std::shared_ptr<ServiceClientProxy>, int64_t, std::shared_ptr<void>>;
+  class QueueBase<rclcpp::GenericClient::SharedPtr, int64_t, std::shared_ptr<void>>;
 
 #endif  // DATA_QUEUE_HPP_

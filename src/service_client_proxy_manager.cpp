@@ -12,11 +12,17 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef SERVICE_CLIENT_PROXY_HPP_
-#define SERVICE_CLIENT_PROXY_HPP_
+#include "service_client_proxy_manager.hpp"
 
-class ServiceClientProxy{
+#include "rclcpp/create_generic_client.hpp"
 
-};
-
-#endif  // SERVICE_CLIENT_PROXY_HPP_
+ServiceClientProxyManager::ServiceClientProxyManager(
+  const std::string & base_service_name,
+  const std::string & service_type,
+  rclcpp::Node::SharedPtr node)
+  : base_service_name_(base_service_name),
+    service_type_(service_type),
+    node_(node),
+    queue_(std::make_shared<Response_Receive_Queue>())
+{
+}
