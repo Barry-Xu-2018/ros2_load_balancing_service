@@ -18,12 +18,39 @@
 #include <memory>
 #include <string>
 
+#include <rclcpp/generic_service.hpp>
+#include <rmw/types.h>
+
+#include "data_queues.hpp"
 
 class ServiceServerProxy : public std::enable_shared_from_this<ServiceServerProxy>
 {
 public:
-  ServiceServerProxy(std::string service_server_name);
+  using SharedPtr = std::shared_ptr<ServiceServerProxy>;
+
+  ServiceServerProxy(
+    const std::string & base_service_name,
+    const std::string & service_type,
+    rclcpp::Node::SharedPtr & node,
+    RequestReceiveQueue::SharedPtr & request_queue);
   ~ServiceServerProxy();
+
+  void send_response(
+    WRITER_GUID writer_guid,
+    int64_t sequence,
+    rclcpp::GenericService::SharedResponse response);
+
+private:
+  const std::string base_service_name_;
+  const std::string service_type_;
+  rclcpp::Node::SharedPtr node_;
+  RequestReceiveQueue::SharedPtr request_queue_;
+
+  rclcpp::GenericService::SharedPtr service_server_proxy_;
+
+  void callback_receive_request(
+      std::shared_ptr<rmw_request_id_t> & request_id,
+      rclcpp::GenericService::SharedRequest & request);
 };
 
 #endif  // SERVICE_SERVER_PROXY_HPP_

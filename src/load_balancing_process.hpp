@@ -19,6 +19,7 @@
 
 #include <rclcpp/generic_client.hpp>
 #include <rclcpp/generic_service.hpp>
+#include <rclcpp/logging.hpp>
 
 /**
  * @brief All available load-balancing strategies
@@ -29,12 +30,14 @@ enum class LoadBalancingStrategy {
   LESS_RESPONSE_TIME ///< Select the service server with the shortest average response time
 };
 
-class LoadBalancingPolicy {
+class LoadBalancingProcess {
 public:
+  using SharedPtr = std::shared_ptr<LoadBalancingProcess>;
+
   using SharedClientProxy = rclcpp::GenericClient::SharedPtr;
   using SharedServiceProxy = rclcpp::GenericService::SharedPtr;
 
-  explicit LoadBalancingPolicy(LoadBalancingStrategy strategy = LoadBalancingStrategy::ROUND_ROBIN)
+  explicit LoadBalancingProcess(LoadBalancingStrategy strategy = LoadBalancingStrategy::ROUND_ROBIN)
   : strategy_(strategy)
   {
   }
@@ -42,6 +45,8 @@ public:
   bool register_client_proxy(SharedClientProxy & client) {
     auto found = client_proxy_info_.find(client);
     if (found != client_proxy_info_.end()) {
+      RCLCPP_ERROR(rclcpp::get_logger(class_name),
+        "Registering Client Proxy failed: Client Proxy already exist !");
       return false;
     }
 
@@ -55,6 +60,8 @@ public:
   bool unregister_client_proxy(SharedClientProxy & client) {
     auto found = client_proxy_info_.find(client);
     if (found == client_proxy_info_.end()) {
+      RCLCPP_ERROR(rclcpp::get_logger(class_name),
+        "Unregistering Client Proxy failed: Client Proxy doesn't exist !");
       return false;
     }
 
@@ -66,6 +73,8 @@ public:
   }
 
 private:
+  const std::string class_name = "LoadBalancingProcess";
+
   LoadBalancingStrategy strategy_;
 
   std::mutex client_proxy_info_mutex_;
