@@ -42,43 +42,26 @@ public:
   {
   }
 
-  bool register_client_proxy(SharedClientProxy & client) {
-    auto found = client_proxy_info_.find(client);
-    if (found != client_proxy_info_.end()) {
-      RCLCPP_ERROR(rclcpp::get_logger(class_name),
-        "Registering Client Proxy failed: Client Proxy already exist !");
-      return false;
-    }
+  bool
+  register_client_proxy(SharedClientProxy & client);
 
-    {
-      std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
-      client_proxy_info_[client] = 0;
-    }
-    return true;
-  }
+  bool unregister_client_proxy(SharedClientProxy & client);
 
-  bool unregister_client_proxy(SharedClientProxy & client) {
-    auto found = client_proxy_info_.find(client);
-    if (found == client_proxy_info_.end()) {
-      RCLCPP_ERROR(rclcpp::get_logger(class_name),
-        "Unregistering Client Proxy failed: Client Proxy doesn't exist !");
-      return false;
-    }
-
-    {
-      std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
-      client_proxy_info_.erase(found);
-    }
-    return true;
-  }
+  SharedClientProxy request_client_proxy();
 
 private:
-  const std::string class_name = "LoadBalancingProcess";
+  const std::string class_name_ = "LoadBalancingProcess";
 
   LoadBalancingStrategy strategy_;
 
   std::mutex client_proxy_info_mutex_;
   std::unordered_map<SharedClientProxy, int64_t> client_proxy_info_;
+  // Pointing to the last iterator
+  std::unordered_map<SharedClientProxy, int64_t>::iterator round_robin_pointer_;
+
+  SharedClientProxy round_robin_to_choose_client_proxy();
+  SharedClientProxy less_requests_to_choose_client_proxy();
+  SharedClientProxy less_response_time_to_choose_client_proxy();
 };
 
 #endif  // LOAD_BALANCING_POLICY_HPP_
