@@ -44,25 +44,15 @@ ServiceServerProxy::~ServiceServerProxy()
 }
 
 void ServiceServerProxy::callback_receive_request(
-  std::shared_ptr<rmw_request_id_t> & request_id,
+  SharedRequestID & request_id,
   rclcpp::GenericService::SharedRequest & request)
 {
-  WRITER_GUID writer_guid;
-  std::copy(
-    std::begin(request_id->writer_guid),
-    std::end(request_id->writer_guid),
-    writer_guid.begin());
-  request_queue_->in_queue(writer_guid, request_id->sequence_number, request);
+  request_queue_->in_queue(request_id, request_id->sequence_number, request);
 }
 
 void ServiceServerProxy::send_response(
-  WRITER_GUID writer_guid,
-  int64_t sequence,
+  const SharedRequestID & request_id,
   rclcpp::GenericService::SharedResponse response)
 {
-  rmw_request_id_t request_id;
-  std::copy(writer_guid.begin(), writer_guid.end(), request_id.writer_guid);
-  request_id.sequence_number = sequence;
-
-  service_server_proxy_->send_response(request_id, response);
+  service_server_proxy_->send_response(*request_id, response);
 }

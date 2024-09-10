@@ -14,6 +14,8 @@
 
 #include <cstdint>
 
+#include <rclcpp/logging.hpp>
+
 #include "load_balancing_process.hpp"
 
 bool
@@ -120,8 +122,7 @@ bool
 LoadBalancingProcess::add_one_record_to_corresponding_table(
   SharedClientProxy & client_proxy,
   ProxyRequestSequence proxy_request_sequence,
-  WRITER_GUID & writer_guid,
-  RequestSequence request_sequence)
+  SharedRequestID & shared_request_id)
 {
   std::lock_guard<std::mutex> lock(corresponding_table_mutex_);
 
@@ -135,12 +136,12 @@ LoadBalancingProcess::add_one_record_to_corresponding_table(
   }
 
   corresponding_table_[client_proxy][proxy_request_sequence]
-    = RequestInfo(writer_guid, request_sequence);
+    = shared_request_id;
 
   return true;
 }
 
-std::optional<LoadBalancingProcess::RequestInfo>
+std::optional<LoadBalancingProcess::SharedRequestID>
 LoadBalancingProcess::get_request_info_from_corresponding_table(
   SharedClientProxy & client_proxy,
   ProxyRequestSequence proxy_request_sequence)

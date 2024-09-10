@@ -15,16 +15,16 @@
 #ifndef DATA_QUEUE_HPP_
 #define DATA_QUEUE_HPP_
 
-#include <array>
+#include <atomic>
 #include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <tuple>
 
 #include <rclcpp/rclcpp.hpp>
-
-#include "common.hpp"
+#include <rmw/types.h>
 
 template<typename T1, typename T2, typename T3>
 class QueueBase {
@@ -37,6 +37,10 @@ public:
 
   void in_queue(T1 & v1, T2 & v2, T3 & v3)
   {
+    if (shutdown_.load()) {
+      return;
+    }
+
     {
       std::lock_guard<std::mutex> lock(queue_mutex_);
       queue_.emplace(Data_Type(v1, v2, v3));
@@ -44,12 +48,16 @@ public:
     cv_.notify_one();
   }
 
-  Data_Type out_queue(void)
+  std::optional<Data_Type> out_queue(void)
   {
-    std::lock_guard<std::mutex> lock(queue_mutex_);
-    auto data = queue_.front();
-    queue_.pop();
-    return data;
+    if (shutdown_.load()) {
+      return std::nullopt;
+    } else {
+      std::lock_guard<std::mutex> lock(queue_mutex_);
+      auto data = queue_.front();
+      queue_.pop();
+      return data;
+    }
   }
 
   void wait(void) {
@@ -58,7 +66,12 @@ public:
       lock,
       [this] {
         std::lock_guard<std::mutex> lock(queue_mutex_);
-        return !queue_.empty();}); 
+        return !queue_.empty() || shutdown_;});
+  }
+
+  void shutdown(void) {
+    shutdown_.store(true);
+    cv_.notify_one();
   }
 
 private:
@@ -67,15 +80,18 @@ private:
 
   std::mutex cond_mutex_;
   std::condition_variable cv_;
+
+  std::atomic_bool shutdown_{false};
 };
 
 // The queue for Service Server proxy to save received request from real service client
-// Writer GUID, sequence, request
-using RequestReceiveQueue = class QueueBase<WRITER_GUID, int64_t, std::shared_ptr<void>>;
+// std::shared_ptr<rmw_request_id_t> (WRITE_GUID + sequence), Not_Used, request
+using RequestReceiveQueue =
+  class QueueBase<std::shared_ptr<rmw_request_id_t>, int64_t, std::shared_ptr<void>>;
 
 // The queue for Service client proxy to save received response from real service server
-// service name, sequence, response
+// client proxy, sequence, response
 using ResponseReceiveQueue =
-  class QueueBase<const std::string, int64_t, std::shared_ptr<void>>;
+  class QueueBase<rclcpp::GenericClient::SharedPtr, int64_t, std::shared_ptr<void>>;
 
 #endif  // DATA_QUEUE_HPP_

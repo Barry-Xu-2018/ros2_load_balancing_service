@@ -42,7 +42,7 @@ ServiceClientProxyManager::~ServiceClientProxyManager()
 void
 ServiceClientProxyManager::start_discovery_service_servers_thread()
 {
-  auto discovery_service_server_thread = 
+  auto discovery_service_server_thread =
     [this](){
       while (check_thread_status()) {
         // Return new service server list and removed service server list
@@ -63,7 +63,7 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
         wait_for_request_to_check_service_servers();
       }
     };
-  
+
   discovery_service_server_thread_ = std::thread(discovery_service_server_thread);
 
   // Use ros2 timer to periodically wake up the thread
@@ -130,7 +130,7 @@ ServiceClientProxyManager::check_service_server_change()
       if (found == matched_service_name_list.end()) {
         del_servers.emplace_back(info.first);
       }
-    }    
+    }
   }
 
   return std::pair(std::move(new_servers), std::move(del_servers));
@@ -189,19 +189,10 @@ ServiceClientProxyManager::send_request_to_check_service_servers()
 
 bool
 ServiceClientProxyManager::async_send_request(
-  const std::string & service_name,
+  SharedClientProxy & client_proxy,
   rclcpp::GenericService::SharedRequest & request,
   int64_t & sequence)
 {
-  SharedClientProxy client_proxy;
-  {
-    std::lock_guard<std::mutex> lock(registered_service_servers_info_mutex_);
-    if (!registered_service_servers_info_.count(service_name)) {
-      return false;
-    }
-    client_proxy = registered_service_servers_info_[service_name];
-  }
-
   auto callback = [this](rclcpp::GenericClient::SharedFuture future) {
     service_client_callback(future);
   };
@@ -214,7 +205,7 @@ ServiceClientProxyManager::async_send_request(
   {
     std::lock_guard<std::mutex> lock(client_proxy_futures_with_info_mutex_);
     client_proxy_futures_with_info_[future.future] =
-      std::pair<std::string, int64_t>(service_name, future.request_id);
+      std::pair<SharedClientProxy, int64_t>(client_proxy, future.request_id);
   }
 
   return true;
@@ -224,17 +215,17 @@ void
 ServiceClientProxyManager::service_client_callback(rclcpp::GenericClient::SharedFuture future)
 {
   auto response = future.get();
-  std::pair<std::string, int64_t> service_name_and_sequence;
+  std::pair<SharedClientProxy, int64_t> client_proxy_and_sequence;
   // Remove future
   {
     std::lock_guard<std::mutex> lock(client_proxy_futures_with_info_mutex_);
-    service_name_and_sequence = client_proxy_futures_with_info_[future];
+    client_proxy_and_sequence = client_proxy_futures_with_info_[future];
     client_proxy_futures_with_info_.erase(future);
   }
 
   // Put to response queue and MessageForwardManager handle it.
   response_queue_->in_queue(
-    service_name_and_sequence.first,
-    service_name_and_sequence.second,
+    client_proxy_and_sequence.first,
+    client_proxy_and_sequence.second,
     response);
 }

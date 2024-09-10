@@ -22,6 +22,7 @@
 #include <mutex>
 #include <string>
 #include <thread>
+#include <unordered_map>
 
 #include "rclcpp/generic_client.hpp"
 #include "rclcpp/node.hpp"
@@ -39,7 +40,7 @@ class ServiceClientProxyManager : public std::enable_shared_from_this<ServiceCli
 {
 public:
   using SharedPtr = std::shared_ptr<ServiceClientProxyManager>;
-  
+
   using ClientProxy = rclcpp::GenericClient;
   using SharedClientProxy = rclcpp::GenericClient::SharedPtr;
 
@@ -53,9 +54,9 @@ public:
     std::chrono::seconds discovery_interval = std::chrono::seconds(2));
 
   ~ServiceClientProxyManager();
-  
+
   SharedClientProxy create_service_proxy(const std::string service_name);
-  
+
   void
   start_discovery_service_servers_thread();
   bool
@@ -75,7 +76,7 @@ public:
   void set_client_proxy_change_callback(
     ClientProxyChangeCallbackType func_add,
     ClientProxyChangeCallbackType func_remove);
-  
+
   // Discovery thread will use below 2 functions to notify service server change to
   // LoadBalancingProccess
   void
@@ -91,7 +92,7 @@ public:
 
   bool
   async_send_request(
-    const std::string & service_name,
+    SharedClientProxy & client_proxy,
     rclcpp::GenericService::SharedRequest & request,
     int64_t & sequence);
 
@@ -131,10 +132,10 @@ private:
   };
 
   // Save future after sending request
-  // future with service name and sequence
+  // SharedFuture <--> SharedClientProxy and proxy request sequence
   std::mutex client_proxy_futures_with_info_mutex_;
   std::unordered_map<rclcpp::GenericClient::SharedFuture,
-    std::pair<std::string, int64_t>,
+    std::pair<SharedClientProxy, int64_t>,
     SharedFutureHash, SharedFutureEqual> client_proxy_futures_with_info_;
 
   void

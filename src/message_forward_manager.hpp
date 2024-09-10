@@ -27,52 +27,28 @@ public:
     ServiceClientProxyManager::SharedPtr & cli_proxy_mgr,
     LoadBalancingProcess::SharedPtr & load_balancing_process,
     RequestReceiveQueue::SharedPtr & request_queue,
-    ResponseReceiveQueue::SharedPtr & response_queue)
-    : srv_proxy_(srv_proxy),
-      cli_proxy_mgr_(cli_proxy_mgr),
-      load_balancing_process_(load_balancing_process),
-      request_queue_(request_queue),
-      response_queue_(response_queue)
-  {
-    // When a new service server is added, the corresponding client proxy will be created. The
-    // LoadBalancingProcess will be notified through the MessageForwardManager.
-    auto register_client_proxy =
-      [this] (ServiceClientProxyManager::SharedClientProxy & cli_proxy) -> bool
-      {
-        return this->load_balancing_process_->register_client_proxy(cli_proxy);
-      };
-    
-    // When a new service server is removed, the corresponding client proxy will be removed. The
-    // LoadBalancingProcess will be notified through the MessageForwardManager.
-    auto unregister_client_proxy =
-      [this] (ServiceClientProxyManager::SharedClientProxy & cli_proxy) -> bool
-      {
-         return this->load_balancing_process_->unregister_client_proxy(cli_proxy);
-      };
-  
-    cli_proxy_mgr_->set_client_proxy_change_callback(
-      register_client_proxy,
-      unregister_client_proxy);
-  
+    ResponseReceiveQueue::SharedPtr & response_queue);
 
-  }
-
-  ~MessageForwardManager(){
-    // Remove callback
-    cli_proxy_mgr_->set_client_proxy_change_callback(
-      nullptr,
-      nullptr);    
-  }
+  ~MessageForwardManager();
 
 private:
+  const std::string class_name_ = "MessageForwardManager";
+
   ServiceServerProxy::SharedPtr srv_proxy_;
   ServiceClientProxyManager::SharedPtr cli_proxy_mgr_;
   LoadBalancingProcess::SharedPtr load_balancing_process_;
   RequestReceiveQueue::SharedPtr request_queue_;
   ResponseReceiveQueue::SharedPtr response_queue_;
 
+  std::atomic_bool handle_response_thread_exit_{false};
   std::thread handle_response_thread_;
+  std::atomic_bool handle_request_thread_exit_{false};
   std::thread handle_request_thread_;
+
+  void handle_request_process(
+    RequestReceiveQueue::SharedPtr & request_queue,
+    LoadBalancingProcess::SharedPtr & load_balancing_process,
+    ServiceClientProxyManager::SharedPtr & cli_proxy_mgr);
 };
 
 #endif  // MESSAGE_FORWARD_MANAGER_HPP_

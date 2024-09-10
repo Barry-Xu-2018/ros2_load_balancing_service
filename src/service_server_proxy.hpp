@@ -27,6 +27,7 @@ class ServiceServerProxy : public std::enable_shared_from_this<ServiceServerProx
 {
 public:
   using SharedPtr = std::shared_ptr<ServiceServerProxy>;
+  using SharedRequestID = std::shared_ptr<rmw_request_id_t>;
 
   ServiceServerProxy(
     const std::string & base_service_name,
@@ -36,8 +37,7 @@ public:
   ~ServiceServerProxy();
 
   void send_response(
-    WRITER_GUID writer_guid,
-    int64_t sequence,
+    const SharedRequestID & request_it,
     rclcpp::GenericService::SharedResponse response);
 
 private:
@@ -49,7 +49,7 @@ private:
   rclcpp::GenericService::SharedPtr service_server_proxy_;
 
   void callback_receive_request(
-      std::shared_ptr<rmw_request_id_t> & request_id,
+      SharedRequestID & request_id,
       rclcpp::GenericService::SharedRequest & request);
 };
 
