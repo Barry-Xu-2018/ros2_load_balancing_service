@@ -24,9 +24,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include <rmw/types.h>
-
-using WRITER_GUID = std::array<int8_t, RMW_GID_STORAGE_SIZE>;
+#include "common.hpp"
 
 template<typename T1, typename T2, typename T3>
 class QueueBase {

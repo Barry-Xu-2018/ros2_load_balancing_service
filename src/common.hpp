@@ -17,6 +17,10 @@
 
 #include <string>
 
+#include <rmw/types.h>
+
+using WRITER_GUID = std::array<int8_t, RMW_GID_STORAGE_SIZE>;
+
 // service name for load balancing
 // The format:
 // /NAMESPACE/PREFIX_LOAD_BALANCING/service_name/USER_INDEX

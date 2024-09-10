@@ -18,6 +18,7 @@ find_package(rosidl_typesupport_introspection_cpp REQUIRED)
 
 add_executable(load_balancing_service
   src/common.cpp
+  src/load_balancing_process.cpp
   src/service_client_proxy_manager.cpp
   src/service_server_proxy.cpp
   src/services_manager.cpp

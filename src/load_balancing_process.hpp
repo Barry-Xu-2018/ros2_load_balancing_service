@@ -15,11 +15,14 @@
 #ifndef LOAD_BALANCING_POLICY_HPP_
 #define LOAD_BALANCING_POLICY_HPP_
 
+#include <optional>
 #include <unordered_map>
 
 #include <rclcpp/generic_client.hpp>
 #include <rclcpp/generic_service.hpp>
 #include <rclcpp/logging.hpp>
+
+#include "common.hpp"
 
 /**
  * @brief All available load-balancing strategies
@@ -37,6 +40,10 @@ public:
   using SharedClientProxy = rclcpp::GenericClient::SharedPtr;
   using SharedServiceProxy = rclcpp::GenericService::SharedPtr;
 
+  using RequestSequence = int64_t;
+  using RequestInfo = std::pair<WRITER_GUID, RequestSequence>;
+  using ProxyRequestSequence = int64_t;
+
   explicit LoadBalancingProcess(LoadBalancingStrategy strategy = LoadBalancingStrategy::ROUND_ROBIN)
   : strategy_(strategy)
   {
@@ -47,7 +54,22 @@ public:
 
   bool unregister_client_proxy(SharedClientProxy & client);
 
-  SharedClientProxy request_client_proxy();
+  // The thread to handle request from service client will call this function to get service client
+  // proxy to forward request to service server.
+  SharedClientProxy
+  request_client_proxy();
+
+  bool
+  add_one_record_to_corresponding_table(
+    SharedClientProxy & client_proxy,
+    ProxyRequestSequence proxy_request_sequence,
+    WRITER_GUID & writer_guid,
+    RequestSequence request_sequence);
+
+  std::optional<RequestInfo>
+  get_request_info_from_corresponding_table(
+    SharedClientProxy & client_proxy,
+    ProxyRequestSequence proxy_request_sequence);
 
 private:
   const std::string class_name_ = "LoadBalancingProcess";
@@ -58,6 +80,12 @@ private:
   std::unordered_map<SharedClientProxy, int64_t> client_proxy_info_;
   // Pointing to the last iterator
   std::unordered_map<SharedClientProxy, int64_t>::iterator round_robin_pointer_;
+
+  std::mutex corresponding_table_mutex_;
+  // After choosing proxy client and sending request message (get proxy request sequence), register
+  // client proxy + request sequence --> [WRITER GUID, request sequence]
+  std::unordered_map<SharedClientProxy, std::unordered_map<ProxyRequestSequence, RequestInfo>>
+    corresponding_table_;
 
   SharedClientProxy round_robin_to_choose_client_proxy();
   SharedClientProxy less_requests_to_choose_client_proxy();

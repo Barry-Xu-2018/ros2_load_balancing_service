@@ -69,7 +69,7 @@ LoadBalancingProcess::SharedClientProxy
 LoadBalancingProcess::less_requests_to_choose_client_proxy()
 {
   std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
-  
+
   if (client_proxy_info_.empty()) {
     return nullptr;
   }
@@ -114,4 +114,44 @@ LoadBalancingProcess::request_client_proxy()
   }
 
   return nullptr;
+}
+
+bool
+LoadBalancingProcess::add_one_record_to_corresponding_table(
+  SharedClientProxy & client_proxy,
+  ProxyRequestSequence proxy_request_sequence,
+  WRITER_GUID & writer_guid,
+  RequestSequence request_sequence)
+{
+  std::lock_guard<std::mutex> lock(corresponding_table_mutex_);
+
+  // Check if client_proxy + proxy_request_sequence already existed in corresponding_table_
+  if (corresponding_table_.count(client_proxy)
+    && !corresponding_table_[client_proxy].count(proxy_request_sequence))
+  {
+    RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+      "The sequence of request of service client proxy already existed.");
+    return false;
+  }
+
+  corresponding_table_[client_proxy][proxy_request_sequence]
+    = RequestInfo(writer_guid, request_sequence);
+
+  return true;
+}
+
+std::optional<LoadBalancingProcess::RequestInfo>
+LoadBalancingProcess::get_request_info_from_corresponding_table(
+  SharedClientProxy & client_proxy,
+  ProxyRequestSequence proxy_request_sequence)
+{
+  std::lock_guard<std::mutex> lock(corresponding_table_mutex_);
+
+  if (corresponding_table_.count(client_proxy)
+    && corresponding_table_[client_proxy].count(proxy_request_sequence))
+  {
+    return corresponding_table_[client_proxy][proxy_request_sequence];
+  }
+
+  return std::nullopt;
 }
