@@ -49,7 +49,7 @@ public:
   ServiceClientProxyManager(
     const std::string & base_service_name,
     const std::string & service_type,
-    rclcpp::Node::SharedPtr node,
+    rclcpp::Node::SharedPtr & node,
     ResponseReceiveQueue::SharedPtr & response_queue,
     std::chrono::seconds discovery_interval = std::chrono::seconds(2));
 

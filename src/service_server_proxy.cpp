@@ -56,3 +56,8 @@ void ServiceServerProxy::send_response(
 {
   service_server_proxy_->send_response(*request_id, response);
 }
+
+const char * ServiceServerProxy::get_service_name()
+{
+  return service_server_proxy_->get_service_name();
+}

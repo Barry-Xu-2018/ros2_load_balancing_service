@@ -84,14 +84,18 @@ private:
   std::atomic_bool shutdown_{false};
 };
 
+using SharedRequestID = std::shared_ptr<rmw_request_id_t>;
+using SharedRequestMsg = std::shared_ptr<void>;
+using SharedResponseMsg = std::shared_ptr<void>;
+
 // The queue for Service Server proxy to save received request from real service client
 // std::shared_ptr<rmw_request_id_t> (WRITE_GUID + sequence), Not_Used, request
 using RequestReceiveQueue =
-  class QueueBase<std::shared_ptr<rmw_request_id_t>, int64_t, std::shared_ptr<void>>;
+  class QueueBase<SharedRequestID, int64_t, SharedRequestMsg>;
 
 // The queue for Service client proxy to save received response from real service server
 // client proxy, sequence, response
 using ResponseReceiveQueue =
-  class QueueBase<rclcpp::GenericClient::SharedPtr, int64_t, std::shared_ptr<void>>;
+  class QueueBase<rclcpp::GenericClient::SharedPtr, int64_t, SharedResponseMsg>;
 
 #endif  // DATA_QUEUE_HPP_

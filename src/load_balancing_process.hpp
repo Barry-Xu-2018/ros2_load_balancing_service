@@ -50,7 +50,8 @@ public:
   bool
   register_client_proxy(SharedClientProxy & client);
 
-  bool unregister_client_proxy(SharedClientProxy & client);
+  bool
+  unregister_client_proxy(SharedClientProxy & client);
 
   // The thread to handle request from service client will call this function to get service client
   // proxy to forward request to service server.
@@ -67,6 +68,8 @@ public:
   get_request_info_from_corresponding_table(
     SharedClientProxy & client_proxy,
     ProxyRequestSequence proxy_request_sequence);
+
+  static std::unordered_map<std::string, LoadBalancingStrategy> supported_load_balancing_strategy;
 
 private:
   const std::string class_name_ = "LoadBalancingProcess";

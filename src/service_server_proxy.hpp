@@ -37,8 +37,10 @@ public:
   ~ServiceServerProxy();
 
   void send_response(
-    const SharedRequestID & request_it,
+    const SharedRequestID & request_id,
     rclcpp::GenericService::SharedResponse response);
+
+  const char * get_service_name();
 
 private:
   const std::string base_service_name_;

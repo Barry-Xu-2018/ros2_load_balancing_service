@@ -18,6 +18,13 @@
 
 #include "load_balancing_process.hpp"
 
+std::unordered_map<std::string, LoadBalancingStrategy>
+  LoadBalancingProcess::supported_load_balancing_strategy = {
+  {"round_robin", LoadBalancingStrategy::ROUND_ROBIN},
+  {"less_requests", LoadBalancingStrategy::LESS_REQUESTS},
+  {"less_response_time", LoadBalancingStrategy::LESS_RESPONSE_TIME}
+};
+
 bool
 LoadBalancingProcess::register_client_proxy(SharedClientProxy & client) {
   std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);

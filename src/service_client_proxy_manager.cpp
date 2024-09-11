@@ -18,7 +18,7 @@
 ServiceClientProxyManager::ServiceClientProxyManager(
   const std::string & base_service_name,
   const std::string & service_type,
-  rclcpp::Node::SharedPtr node,
+  rclcpp::Node::SharedPtr & node,
   ResponseReceiveQueue::SharedPtr & response_queue,
   std::chrono::seconds discovery_interval)
   : base_service_name_(base_service_name),

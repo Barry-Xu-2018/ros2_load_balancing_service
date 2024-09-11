@@ -49,6 +49,11 @@ private:
     RequestReceiveQueue::SharedPtr & request_queue,
     LoadBalancingProcess::SharedPtr & load_balancing_process,
     ServiceClientProxyManager::SharedPtr & cli_proxy_mgr);
+
+  void handle_response_process(
+    ResponseReceiveQueue::SharedPtr & response_queue,
+    LoadBalancingProcess::SharedPtr & load_balancing_process,
+    ServiceServerProxy::SharedPtr & srv_proxy);
 };
 
 #endif  // MESSAGE_FORWARD_MANAGER_HPP_
