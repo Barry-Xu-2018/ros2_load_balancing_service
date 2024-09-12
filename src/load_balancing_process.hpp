@@ -91,6 +91,13 @@ private:
   SharedClientProxy round_robin_to_choose_client_proxy();
   SharedClientProxy less_requests_to_choose_client_proxy();
   SharedClientProxy less_response_time_to_choose_client_proxy();
+
+  std::mutex send_proxy_request_time_table_mutex_;
+  // For less response time strategy
+  using TimeType = std::chrono::time_point<std::chrono::steady_clock>;
+  std::unordered_map<SharedClientProxy, std::unordered_map<ProxyRequestSequence, TimeType>>
+    send_proxy_request_time_table_;
+
 };
 
 #endif  // LOAD_BALANCING_POLICY_HPP_

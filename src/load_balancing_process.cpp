@@ -43,16 +43,33 @@ LoadBalancingProcess::register_client_proxy(SharedClientProxy & client) {
 
 bool
 LoadBalancingProcess::unregister_client_proxy(SharedClientProxy & client) {
-  std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
+  // clean client proxy list
+  {
+    std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
 
-  auto found = client_proxy_info_.find(client);
-  if (found == client_proxy_info_.end()) {
-    RCLCPP_ERROR(rclcpp::get_logger(class_name_),
-      "Unregistering Client Proxy failed: Client Proxy doesn't exist !");
-    return false;
+    auto found = client_proxy_info_.find(client);
+    if (found == client_proxy_info_.end()) {
+      RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+        "Unregistering Client Proxy failed: Client Proxy doesn't exist !");
+      return false;
+    }
+
+    client_proxy_info_.erase(found);
   }
 
-  client_proxy_info_.erase(found);
+  // Clean corresponding table
+  {
+    std::lock_guard<std::mutex> lock(corresponding_table_mutex_);
+    if (corresponding_table_.count(client)) {
+      corresponding_table_.erase(client);
+    }
+  }
+
+  if (strategy_ == LoadBalancingStrategy::LESS_RESPONSE_TIME) {
+    std::lock_guard<std::mutex> lock(send_proxy_request_time_table_mutex_);
+    send_proxy_request_time_table_.erase(client);
+  }
+
   return true;
 }
 
@@ -131,19 +148,39 @@ LoadBalancingProcess::add_one_record_to_corresponding_table(
   ProxyRequestSequence proxy_request_sequence,
   SharedRequestID & shared_request_id)
 {
-  std::lock_guard<std::mutex> lock(corresponding_table_mutex_);
-
-  // Check if client_proxy + proxy_request_sequence already existed in corresponding_table_
-  if (corresponding_table_.count(client_proxy)
-    && !corresponding_table_[client_proxy].count(proxy_request_sequence))
   {
-    RCLCPP_ERROR(rclcpp::get_logger(class_name_),
-      "The sequence of request of service client proxy already existed.");
-    return false;
+    std::lock_guard<std::mutex> lock(corresponding_table_mutex_);
+
+    // Check if client_proxy + proxy_request_sequence already existed in corresponding_table_
+    if (corresponding_table_.count(client_proxy)
+      && !corresponding_table_[client_proxy].count(proxy_request_sequence))
+    {
+      RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+        "The sequence of request of service client proxy already existed.");
+      return false;
+    }
+
+    corresponding_table_[client_proxy][proxy_request_sequence]
+      = shared_request_id;
   }
 
-  corresponding_table_[client_proxy][proxy_request_sequence]
-    = shared_request_id;
+  switch (strategy_) {
+    case LoadBalancingStrategy::LESS_REQUESTS:
+      {
+        std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
+        client_proxy_info_[client_proxy]++;
+      }
+      break;
+    case LoadBalancingStrategy::LESS_RESPONSE_TIME:
+      {
+        std::lock_guard<std::mutex> lock(send_proxy_request_time_table_mutex_);
+        send_proxy_request_time_table_[client_proxy][proxy_request_sequence]
+          = std::chrono::steady_clock::now();
+      }
+      break;
+    default:
+      break;
+  }
 
   return true;
 }
@@ -153,13 +190,54 @@ LoadBalancingProcess::get_request_info_from_corresponding_table(
   SharedClientProxy & client_proxy,
   ProxyRequestSequence proxy_request_sequence)
 {
-  std::lock_guard<std::mutex> lock(corresponding_table_mutex_);
-
-  if (corresponding_table_.count(client_proxy)
-    && corresponding_table_[client_proxy].count(proxy_request_sequence))
+  std::optional<LoadBalancingProcess::SharedRequestID> ret_value = std::nullopt;
   {
-    return corresponding_table_[client_proxy][proxy_request_sequence];
+    std::lock_guard<std::mutex> lock(corresponding_table_mutex_);
+    if (!corresponding_table_.count(client_proxy)
+      || !corresponding_table_[client_proxy].count(proxy_request_sequence))
+    {
+      RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+        "No client proxy or proxy request sequence exist in corresponding table.");
+      return ret_value;
+    }
+    ret_value = corresponding_table_[client_proxy][proxy_request_sequence];
+    corresponding_table_[client_proxy].erase(proxy_request_sequence);
   }
 
-  return std::nullopt;
+  switch (strategy_) {
+    case LoadBalancingStrategy::LESS_REQUESTS:
+      // Reduce the number of processed requests
+      {
+        std::lock_guard<std::mutex> local(client_proxy_info_mutex_);
+        client_proxy_info_[client_proxy]--;
+      }
+      break;
+    case LoadBalancingStrategy::LESS_RESPONSE_TIME:
+      // Update the average processing time of the response.
+      {
+        TimeType send_time;
+        {
+          std::lock_guard<std::mutex> lock(send_proxy_request_time_table_mutex_);
+          send_time = send_proxy_request_time_table_[client_proxy][proxy_request_sequence];
+          send_proxy_request_time_table_[client_proxy].erase(proxy_request_sequence);
+        }
+        auto response_used_time =
+          std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - send_time);
+
+        // Update the average response time of the client proxy
+        {
+          std::lock_guard<std::mutex> local_lock(client_proxy_info_mutex_);
+          if (client_proxy_info_.count(client_proxy)) {
+            client_proxy_info_[client_proxy] =
+              (client_proxy_info_[client_proxy] + response_used_time.count())/2;
+          }
+        }
+      }
+      break;
+    default:
+      break;
+  }
+
+  return ret_value;
 }
