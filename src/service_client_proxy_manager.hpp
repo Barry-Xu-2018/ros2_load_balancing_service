@@ -100,6 +100,9 @@ public:
     int64_t & sequence);
 
 private:
+  const std::string class_name_ = "ServiceClientProxyManager";
+  rclcpp::Logger logger_;
+
   // */load_balancing/base_service_name_/1
   std::string base_service_name_;
   std::string service_type_;

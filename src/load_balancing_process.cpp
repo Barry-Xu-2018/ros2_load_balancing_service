@@ -31,7 +31,7 @@ LoadBalancingProcess::register_client_proxy(SharedClientProxy & client) {
 
   auto found = client_proxy_info_.find(client);
   if (found != client_proxy_info_.end()) {
-    RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+    RCLCPP_ERROR(logger_,
       "Registering Client Proxy failed: Client Proxy already exist !");
     return false;
   }
@@ -49,7 +49,7 @@ LoadBalancingProcess::unregister_client_proxy(SharedClientProxy & client) {
 
     auto found = client_proxy_info_.find(client);
     if (found == client_proxy_info_.end()) {
-      RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+      RCLCPP_ERROR(logger_,
         "Unregistering Client Proxy failed: Client Proxy doesn't exist !");
       return false;
     }
@@ -155,7 +155,7 @@ LoadBalancingProcess::add_one_record_to_corresponding_table(
     if (corresponding_table_.count(client_proxy)
       && !corresponding_table_[client_proxy].count(proxy_request_sequence))
     {
-      RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+      RCLCPP_ERROR(logger_,
         "The sequence of request of service client proxy already existed.");
       return false;
     }
@@ -196,7 +196,7 @@ LoadBalancingProcess::get_request_info_from_corresponding_table(
     if (!corresponding_table_.count(client_proxy)
       || !corresponding_table_[client_proxy].count(proxy_request_sequence))
     {
-      RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+      RCLCPP_ERROR(logger_,
         "No client proxy or proxy request sequence exist in corresponding table.");
       return ret_value;
     }

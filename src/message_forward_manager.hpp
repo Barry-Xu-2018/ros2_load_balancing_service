@@ -33,6 +33,7 @@ public:
 
 private:
   const std::string class_name_ = "MessageForwardManager";
+  rclcpp::Logger logger_;
 
   ServiceServerProxy::SharedPtr srv_proxy_;
   ServiceClientProxyManager::SharedPtr cli_proxy_mgr_;

@@ -43,6 +43,9 @@ public:
   const char * get_service_name();
 
 private:
+  const std::string class_name_ = "ServiceServerProxy";
+  rclcpp::Logger logger_;
+
   const std::string base_service_name_;
   const std::string service_type_;
   rclcpp::Node::SharedPtr node_;

@@ -24,7 +24,8 @@ MessageForwardManager::MessageForwardManager(
   LoadBalancingProcess::SharedPtr & load_balancing_process,
   RequestReceiveQueue::SharedPtr & request_queue,
   ResponseReceiveQueue::SharedPtr & response_queue)
-  : srv_proxy_(srv_proxy),
+  : logger_(rclcpp::get_logger(class_name_)),
+    srv_proxy_(srv_proxy),
     cli_proxy_mgr_(cli_proxy_mgr),
     load_balancing_process_(load_balancing_process),
     request_queue_(request_queue),
@@ -90,8 +91,7 @@ void MessageForwardManager::handle_request_process(
 
     auto ret_value = request_queue->out_queue();
     if (ret_value == std::nullopt) {
-      RCLCPP_INFO(rclcpp::get_logger(class_name_),
-        "Request queue is shutdown, exit request process thread.");
+      // Request queue is shutdown, exit request handle thread.
       break;
     }
 
@@ -103,7 +103,7 @@ void MessageForwardManager::handle_request_process(
       client_proxy_mgr->async_send_request(
         client_proxy, std::get<SharedRequestMsg>(request) ,sequence_num);
     if (!ret) {
-      RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+      RCLCPP_ERROR(logger_,
         "Failed to send request to %s", client_proxy->get_service_name());
       continue;
     }
@@ -111,12 +111,13 @@ void MessageForwardManager::handle_request_process(
     ret = load_balancing_process->add_one_record_to_corresponding_table(
       client_proxy, sequence_num, std::get<SharedRequestID>(request));
     if (!ret) {
-      RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+      RCLCPP_ERROR(logger_,
         "Failed to record proxy client (%s, sequence:%ld)",
         client_proxy->get_service_name(), sequence_num);
       continue;
     }
   }
+  RCLCPP_INFO(logger_, "Request handle thread exits.");
 }
 
 void MessageForwardManager::handle_response_process(
@@ -130,8 +131,7 @@ void MessageForwardManager::handle_response_process(
 
     auto ret_value = response_queue->out_queue();
     if (ret_value == std::nullopt) {
-      RCLCPP_INFO(rclcpp::get_logger(class_name_),
-        "Response queue is shutdown, exit response process thread.");
+      // Response queue is shutdown, exit response handle thread.
       break;
     }
 
@@ -144,7 +144,7 @@ void MessageForwardManager::handle_response_process(
       load_balancing_process->get_request_info_from_corresponding_table(
         client_proxy, request_proxy_sequence);
     if (ret_request_id == std::nullopt) {
-      RCLCPP_ERROR(rclcpp::get_logger(class_name_),
+      RCLCPP_ERROR(logger_,
         "Failed to get request id based on client proxy (%s) and sequence (%ld).",
         client_proxy->get_service_name(), request_proxy_sequence);
       continue;
@@ -153,4 +153,5 @@ void MessageForwardManager::handle_response_process(
     auto request_id = ret_request_id.value();
     srv_proxy->send_response(request_id, std::get<SharedResponseMsg>(response));
   }
+  RCLCPP_INFO(logger_, "Response handle thread exists.");
 }

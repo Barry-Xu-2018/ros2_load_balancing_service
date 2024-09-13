@@ -43,7 +43,8 @@ public:
   using ProxyRequestSequence = int64_t;
 
   explicit LoadBalancingProcess(LoadBalancingStrategy strategy = LoadBalancingStrategy::ROUND_ROBIN)
-  : strategy_(strategy)
+  : logger_(rclcpp::get_logger(class_name_)),
+    strategy_(strategy)
   {
   }
 
@@ -77,6 +78,7 @@ public:
 
 private:
   const std::string class_name_ = "LoadBalancingProcess";
+  rclcpp::Logger logger_;
 
   LoadBalancingStrategy strategy_;
 

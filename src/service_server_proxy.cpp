@@ -22,7 +22,8 @@ ServiceServerProxy::ServiceServerProxy(
   const std::string & service_type,
   rclcpp::Node::SharedPtr & node,
   RequestReceiveQueue::SharedPtr & request_queue)
-: base_service_name_(base_service_name),
+: logger_(rclcpp::get_logger(class_name_)),
+  base_service_name_(base_service_name),
   service_type_(service_type),
   node_(node),
   request_queue_(request_queue)

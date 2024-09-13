@@ -12,6 +12,8 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <rclcpp/logging.hpp>
+
 #include "common.hpp"
 #include "service_client_proxy_manager.hpp"
 
@@ -21,7 +23,8 @@ ServiceClientProxyManager::ServiceClientProxyManager(
   rclcpp::Node::SharedPtr & node,
   ResponseReceiveQueue::SharedPtr & response_queue,
   std::chrono::seconds discovery_interval)
-  : base_service_name_(base_service_name),
+  : logger_(rclcpp::get_logger(class_name_)),
+    base_service_name_(base_service_name),
     service_type_(service_type),
     node_(node),
     response_queue_(response_queue),
@@ -51,6 +54,7 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
         for (auto new_service : change_info.first) {
           auto client_proxy = create_service_proxy(new_service);
           if (register_new_client_proxy(client_proxy)) {
+            RCLCPP_DEBUG(logger_, "Find a new service server and register client proxy.");
             add_new_load_balancing_service(new_service, client_proxy);
           }
         }
@@ -59,6 +63,7 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
         for (auto removed_service: change_info.second) {
           auto client_proxy = get_created_client_proxy(removed_service);
           if (unregister_client_proxy(client_proxy)) {
+            RCLCPP_DEBUG(logger_, "Find a removed service server and unregister client proxy.");
             remove_new_load_balancing_service(removed_service);
           }
         }
