@@ -49,12 +49,14 @@ private:
   void handle_request_process(
     RequestReceiveQueue::SharedPtr & request_queue,
     LoadBalancingProcess::SharedPtr & load_balancing_process,
-    ServiceClientProxyManager::SharedPtr & cli_proxy_mgr);
+    ServiceClientProxyManager::SharedPtr & cli_proxy_mgr,
+    rclcpp::Logger & logger);
 
   void handle_response_process(
     ResponseReceiveQueue::SharedPtr & response_queue,
     LoadBalancingProcess::SharedPtr & load_balancing_process,
-    ServiceServerProxy::SharedPtr & srv_proxy);
+    ServiceServerProxy::SharedPtr & srv_proxy,
+    rclcpp::Logger & logger);
 };
 
 #endif  // MESSAGE_FORWARD_MANAGER_HPP_

@@ -14,6 +14,8 @@
 
 #include <array>
 
+#include <rclcpp/logging.hpp>
+
 #include "common.hpp"
 #include "service_server_proxy.hpp"
 
@@ -48,6 +50,11 @@ void ServiceServerProxy::callback_receive_request(
   SharedRequestID & request_id,
   rclcpp::GenericService::SharedRequest & request)
 {
+  RCLCPP_DEBUG(logger_,
+    "Receive request from [%02x %02x %02x %02x %02x %02x]:%ld",
+    request_id->writer_guid[10], request_id->writer_guid[11], request_id->writer_guid[12],
+    request_id->writer_guid[13], request_id->writer_guid[14], request_id->writer_guid[15],
+    request_id->sequence_number);
   request_queue_->in_queue(request_id, request_id->sequence_number, request);
 }
 

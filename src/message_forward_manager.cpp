@@ -52,12 +52,12 @@ MessageForwardManager::MessageForwardManager(
     unregister_client_proxy);
 
   auto thread_handle_request_process = [this] () {
-      handle_request_process(request_queue_, load_balancing_process_, cli_proxy_mgr_);
+      handle_request_process(request_queue_, load_balancing_process_, cli_proxy_mgr_, logger_);
     };
   handle_request_thread_ = std::thread(thread_handle_request_process);
 
   auto thread_handle_response_process = [this] () {
-    handle_response_process(response_queue_, load_balancing_process_, srv_proxy_);
+    handle_response_process(response_queue_, load_balancing_process_, srv_proxy_, logger_);
   };
   handle_response_thread_ = std::thread(thread_handle_response_process);
 }
@@ -83,7 +83,8 @@ MessageForwardManager::~MessageForwardManager()
 void MessageForwardManager::handle_request_process(
   RequestReceiveQueue::SharedPtr & request_queue,
   LoadBalancingProcess::SharedPtr & load_balancing_process,
-  ServiceClientProxyManager::SharedPtr & client_proxy_mgr)
+  ServiceClientProxyManager::SharedPtr & client_proxy_mgr,
+  rclcpp::Logger & logger)
 {
   while (!handle_request_thread_exit_.load())
   {
@@ -108,6 +109,15 @@ void MessageForwardManager::handle_request_process(
       continue;
     }
 
+    RCLCPP_DEBUG(logger, "Forward request: [%02x %02x %02x %02x %02x %02x]:%ld => %p",
+      std::get<SharedRequestID>(request)->writer_guid[10],
+      std::get<SharedRequestID>(request)->writer_guid[11],
+      std::get<SharedRequestID>(request)->writer_guid[12],
+      std::get<SharedRequestID>(request)->writer_guid[13],
+      std::get<SharedRequestID>(request)->writer_guid[14],
+      std::get<SharedRequestID>(request)->writer_guid[15],
+      std::get<SharedRequestID>(request)->sequence_number, static_cast<void *>(client_proxy.get()));
+
     ret = load_balancing_process->add_one_record_to_corresponding_table(
       client_proxy, sequence_num, std::get<SharedRequestID>(request));
     if (!ret) {
@@ -123,7 +133,8 @@ void MessageForwardManager::handle_request_process(
 void MessageForwardManager::handle_response_process(
   ResponseReceiveQueue::SharedPtr & response_queue,
   LoadBalancingProcess::SharedPtr & load_balancing_process,
-  ServiceServerProxy::SharedPtr & srv_proxy)
+  ServiceServerProxy::SharedPtr & srv_proxy,
+  rclcpp::Logger & logger)
 {
   while (!handle_response_thread_exit_.load())
   {
@@ -144,14 +155,27 @@ void MessageForwardManager::handle_response_process(
       load_balancing_process->get_request_info_from_corresponding_table(
         client_proxy, request_proxy_sequence);
     if (ret_request_id == std::nullopt) {
-      RCLCPP_ERROR(logger_,
-        "Failed to get request id based on client proxy (%s) and sequence (%ld).",
-        client_proxy->get_service_name(), request_proxy_sequence);
-      continue;
+      // The response returns too quickly, before the request handling thread has registered the
+      // information. So try again
+      std::this_thread::sleep_for(std::chrono::milliseconds(10));
+      ret_request_id =
+      load_balancing_process->get_request_info_from_corresponding_table(
+        client_proxy, request_proxy_sequence);
+      if (ret_request_id == std::nullopt) {
+        RCLCPP_ERROR(logger_,
+          "Failed to get request id based on client proxy (%s) and sequence (%ld).",
+          client_proxy->get_service_name(), request_proxy_sequence);
+        continue;
+      }
     }
 
     auto request_id = ret_request_id.value();
     srv_proxy->send_response(request_id, std::get<SharedResponseMsg>(response));
+
+    RCLCPP_DEBUG(logger, "Forward response: [%02x %02x %02x %02x %02x %02x]:%ld <= %p",
+      request_id->writer_guid[10], request_id->writer_guid[11], request_id->writer_guid[12],
+      request_id->writer_guid[13], request_id->writer_guid[14], request_id->writer_guid[15],
+      request_id->sequence_number, static_cast<void *>(client_proxy.get()));
   }
   RCLCPP_INFO(logger_, "Response handle thread exists.");
 }

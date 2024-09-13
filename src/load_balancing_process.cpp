@@ -153,7 +153,7 @@ LoadBalancingProcess::add_one_record_to_corresponding_table(
 
     // Check if client_proxy + proxy_request_sequence already existed in corresponding_table_
     if (corresponding_table_.count(client_proxy)
-      && !corresponding_table_[client_proxy].count(proxy_request_sequence))
+      && corresponding_table_[client_proxy].count(proxy_request_sequence))
     {
       RCLCPP_ERROR(logger_,
         "The sequence of request of service client proxy already existed.");
@@ -196,7 +196,7 @@ LoadBalancingProcess::get_request_info_from_corresponding_table(
     if (!corresponding_table_.count(client_proxy)
       || !corresponding_table_[client_proxy].count(proxy_request_sequence))
     {
-      RCLCPP_ERROR(logger_,
+      RCLCPP_WARN(logger_,
         "No client proxy or proxy request sequence exist in corresponding table.");
       return ret_value;
     }
