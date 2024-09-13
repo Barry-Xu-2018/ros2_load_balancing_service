@@ -47,6 +47,10 @@ public:
   {
   }
 
+  ~ LoadBalancingProcess()
+  {
+  }
+
   bool
   register_client_proxy(SharedClientProxy & client);
 

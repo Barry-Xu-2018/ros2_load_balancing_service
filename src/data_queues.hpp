@@ -66,7 +66,7 @@ public:
       lock,
       [this] {
         std::lock_guard<std::mutex> lock(queue_mutex_);
-        return !queue_.empty() || shutdown_;});
+        return !queue_.empty() || shutdown_.load();});
   }
 
   void shutdown(void) {

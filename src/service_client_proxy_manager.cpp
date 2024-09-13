@@ -31,7 +31,6 @@ ServiceClientProxyManager::ServiceClientProxyManager(
 
 ServiceClientProxyManager::~ServiceClientProxyManager()
 {
-  timer_->reset();
   thread_exit_ = true;
   while (discovery_service_server_thread_.joinable()) {
     send_request_to_check_service_servers();
@@ -51,13 +50,17 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
         // found new load balancing service
         for (auto new_service : change_info.first) {
           auto client_proxy = create_service_proxy(new_service);
-          register_new_client_proxy(client_proxy);
-          add_new_load_balancing_service(new_service, client_proxy);
+          if (register_new_client_proxy(client_proxy)) {
+            add_new_load_balancing_service(new_service, client_proxy);
+          }
         }
 
         // found removed load balancing service
         for (auto removed_service: change_info.second) {
-          remove_new_load_balancing_service(removed_service);
+          auto client_proxy = get_created_client_proxy(removed_service);
+          if (unregister_client_proxy(client_proxy)) {
+            remove_new_load_balancing_service(removed_service);
+          }
         }
 
         wait_for_request_to_check_service_servers();
@@ -158,20 +161,32 @@ ServiceClientProxyManager::remove_new_load_balancing_service(const std::string &
   registered_service_servers_info_.erase(remove_service);
 }
 
-void
-ServiceClientProxyManager::register_new_client_proxy(SharedClientProxy & cli_proxy)
+ServiceClientProxyManager::SharedClientProxy
+ServiceClientProxyManager::get_created_client_proxy(const std::string & service_name)
 {
-  if (add_callback_) {
-    add_callback_(cli_proxy);
-  }
+  std::lock_guard<std::mutex> lock(registered_service_servers_info_mutex_);
+  return registered_service_servers_info_[service_name];
 }
 
-void
+bool
+ServiceClientProxyManager::register_new_client_proxy(SharedClientProxy & cli_proxy)
+{
+  if (!add_callback_) {
+    return false;
+  }
+
+  add_callback_(cli_proxy);
+  return true;
+}
+
+bool
 ServiceClientProxyManager::unregister_client_proxy(SharedClientProxy & cli_proxy)
 {
-  if (remove_callback_) {
-    remove_callback_(cli_proxy);
+  if (!remove_callback_) {
+    return false;
   }
+  remove_callback_(cli_proxy);
+  return true;
 }
 
 void

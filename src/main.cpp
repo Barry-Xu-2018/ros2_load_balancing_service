@@ -16,6 +16,7 @@
 #include <string>
 #include <memory>
 
+#include "rclcpp/executors/multi_threaded_executor.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "rclcpp/logging.hpp"
 
@@ -96,6 +97,15 @@ int main(int argc, char * argv[])
     "    Load balancing strategy: %s",
     service_proxy->get_service_name(), srv_type.c_str(), load_balancing_strategy.c_str());
 
+  rclcpp::executors::MultiThreadedExecutor exec;
+  exec.add_node(node);
+  exec.spin();
+
+  // Disable process
+  request_queue->shutdown();
+  response_queue->shutdown();
+
   rclcpp::shutdown();
+
   return EXIT_SUCCESS;
 }

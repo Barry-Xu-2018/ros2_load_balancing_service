@@ -71,16 +71,12 @@ MessageForwardManager::~MessageForwardManager()
   // Stop thread for handling request
   request_queue_->shutdown();
   handle_request_thread_exit_.store(true);
-  while (handle_request_thread_.joinable()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
+  handle_request_thread_.join();
 
   // Stop thread for handling response
   response_queue_->shutdown();
   handle_response_thread_exit_.store(true);
-  while (handle_response_thread_.joinable()) {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
+  handle_response_thread_.join();
 }
 
 void MessageForwardManager::handle_request_process(
@@ -88,7 +84,7 @@ void MessageForwardManager::handle_request_process(
   LoadBalancingProcess::SharedPtr & load_balancing_process,
   ServiceClientProxyManager::SharedPtr & client_proxy_mgr)
 {
-  while (handle_request_thread_exit_.load())
+  while (!handle_request_thread_exit_.load())
   {
     request_queue->wait();
 
@@ -128,7 +124,7 @@ void MessageForwardManager::handle_response_process(
   LoadBalancingProcess::SharedPtr & load_balancing_process,
   ServiceServerProxy::SharedPtr & srv_proxy)
 {
-  while (handle_response_thread_exit_.load())
+  while (!handle_response_thread_exit_.load())
   {
     response_queue->wait();
 

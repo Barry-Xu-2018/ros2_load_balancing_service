@@ -79,9 +79,9 @@ public:
 
   // Discovery thread will use below 2 functions to notify service server change to
   // LoadBalancingProccess
-  void
+  bool
   register_new_client_proxy(SharedClientProxy & cli_proxy);
-  void
+  bool
   unregister_client_proxy(SharedClientProxy & cli_proxy);
 
   // Control when the discovery operation needs to be executed in discovery thread
@@ -89,6 +89,9 @@ public:
   wait_for_request_to_check_service_servers();
   void
   send_request_to_check_service_servers();
+
+  SharedClientProxy
+  get_created_client_proxy(const std::string & service_name);
 
   bool
   async_send_request(
