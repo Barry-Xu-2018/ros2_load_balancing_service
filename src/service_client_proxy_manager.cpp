@@ -34,11 +34,9 @@ ServiceClientProxyManager::ServiceClientProxyManager(
 
 ServiceClientProxyManager::~ServiceClientProxyManager()
 {
-  thread_exit_ = true;
-  while (discovery_service_server_thread_.joinable()) {
-    send_request_to_check_service_servers();
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
+  thread_exit_.store(true);
+  send_request_to_check_service_servers();
+  discovery_service_server_thread_.join();
 }
 
 void

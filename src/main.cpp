@@ -91,6 +91,9 @@ int main(int argc, char * argv[])
     std::make_shared<MessageForwardManager>(
       service_proxy, client_proxy_manager, load_balancing_process, request_queue, response_queue);
 
+  // Start to discovery service server
+  client_proxy_manager->start_discovery_service_servers_thread();
+
   RCLCPP_INFO(rclcpp::get_logger("main"),
     "\nLoad balancing service name: %s\n"
     "               Service type: %s\n"
