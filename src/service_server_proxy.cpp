@@ -51,10 +51,10 @@ void ServiceServerProxy::callback_receive_request(
   rclcpp::GenericService::SharedRequest & request)
 {
   RCLCPP_DEBUG(logger_,
-    "Receive request from [%02x %02x %02x %02x %02x %02x]:%ld",
-    request_id->writer_guid[10], request_id->writer_guid[11], request_id->writer_guid[12],
-    request_id->writer_guid[13], request_id->writer_guid[14], request_id->writer_guid[15],
-    request_id->sequence_number);
+    "Receive request from [%02x %02x %02x %02x %02x %02x %02x %02x]:%ld",
+    request_id->writer_guid[0], request_id->writer_guid[1], request_id->writer_guid[2],
+    request_id->writer_guid[3], request_id->writer_guid[4], request_id->writer_guid[5],
+    request_id->writer_guid[6], request_id->writer_guid[7], request_id->sequence_number);
   request_queue_->in_queue(request_id, request_id->sequence_number, request);
 }
 

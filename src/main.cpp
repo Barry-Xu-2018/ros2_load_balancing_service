@@ -87,7 +87,7 @@ int main(int argc, char * argv[])
   auto service_proxy =
     std::make_shared<ServiceServerProxy>(srv_name, srv_type, node, request_queue);
 
-  auto message_forword_manager =
+  auto message_forward_manager =
     std::make_shared<MessageForwardManager>(
       service_proxy, client_proxy_manager, load_balancing_process, request_queue, response_queue);
 

@@ -109,13 +109,15 @@ void MessageForwardManager::handle_request_process(
       continue;
     }
 
-    RCLCPP_DEBUG(logger, "Forward request: [%02x %02x %02x %02x %02x %02x]:%ld => %p",
-      std::get<SharedRequestID>(request)->writer_guid[10],
-      std::get<SharedRequestID>(request)->writer_guid[11],
-      std::get<SharedRequestID>(request)->writer_guid[12],
-      std::get<SharedRequestID>(request)->writer_guid[13],
-      std::get<SharedRequestID>(request)->writer_guid[14],
-      std::get<SharedRequestID>(request)->writer_guid[15],
+    RCLCPP_DEBUG(logger, "Forward request: [%02x %02x %02x %02x %02x %02x %02x %02x]:%ld => %p",
+      std::get<SharedRequestID>(request)->writer_guid[0],
+      std::get<SharedRequestID>(request)->writer_guid[1],
+      std::get<SharedRequestID>(request)->writer_guid[2],
+      std::get<SharedRequestID>(request)->writer_guid[3],
+      std::get<SharedRequestID>(request)->writer_guid[4],
+      std::get<SharedRequestID>(request)->writer_guid[5],
+      std::get<SharedRequestID>(request)->writer_guid[6],
+      std::get<SharedRequestID>(request)->writer_guid[7],
       std::get<SharedRequestID>(request)->sequence_number, static_cast<void *>(client_proxy.get()));
 
     ret = load_balancing_process->add_one_record_to_corresponding_table(
@@ -172,10 +174,11 @@ void MessageForwardManager::handle_response_process(
     auto request_id = ret_request_id.value();
     srv_proxy->send_response(request_id, std::get<SharedResponseMsg>(response));
 
-    RCLCPP_DEBUG(logger, "Forward response: [%02x %02x %02x %02x %02x %02x]:%ld <= %p",
-      request_id->writer_guid[10], request_id->writer_guid[11], request_id->writer_guid[12],
-      request_id->writer_guid[13], request_id->writer_guid[14], request_id->writer_guid[15],
-      request_id->sequence_number, static_cast<void *>(client_proxy.get()));
+    RCLCPP_DEBUG(logger, "Forward response: [%02x %02x %02x %02x %02x %02x %02x %02x]:%ld <= %p",
+      request_id->writer_guid[0], request_id->writer_guid[1], request_id->writer_guid[2],
+      request_id->writer_guid[3], request_id->writer_guid[4], request_id->writer_guid[5],
+      request_id->writer_guid[6], request_id->writer_guid[7], request_id->sequence_number,
+      static_cast<void *>(client_proxy.get()));
   }
   RCLCPP_INFO(logger_, "Response handle thread exists.");
 }
