@@ -55,6 +55,10 @@ LoadBalancingProcess::unregister_client_proxy(SharedClientProxy & client) {
     }
 
     client_proxy_info_.erase(found);
+
+    if (strategy_ == LoadBalancingStrategy::ROUND_ROBIN) {
+      round_robin_pointer_ = client_proxy_info_.end();
+    }
   }
 
   // Clean corresponding table

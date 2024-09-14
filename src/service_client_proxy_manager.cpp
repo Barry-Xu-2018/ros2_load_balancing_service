@@ -52,8 +52,11 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
         for (auto new_service : change_info.first) {
           auto client_proxy = create_service_proxy(new_service);
           if (register_new_client_proxy(client_proxy)) {
-            RCLCPP_DEBUG(logger_, "Find a new service server and register client proxy.");
             add_new_load_balancing_service(new_service, client_proxy);
+            RCLCPP_DEBUG(
+              logger_,
+              "Find a new service server \"%s\" and register client proxy.",
+              new_service.c_str());
           }
         }
 
@@ -61,8 +64,11 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
         for (auto removed_service: change_info.second) {
           auto client_proxy = get_created_client_proxy(removed_service);
           if (unregister_client_proxy(client_proxy)) {
-            RCLCPP_DEBUG(logger_, "Find a removed service server and unregister client proxy.");
-            remove_new_load_balancing_service(removed_service);
+            remove_load_balancing_service(removed_service);
+            RCLCPP_DEBUG(
+              logger_,
+              "Find a removed service server \"%s\" and unregister client proxy.",
+              removed_service.c_str());
           }
         }
 
@@ -129,11 +135,7 @@ ServiceClientProxyManager::check_service_server_change()
   {
     std::lock_guard<std::mutex> lock(registered_service_servers_info_mutex_);
     for (const auto & info : registered_service_servers_info_) {
-      auto found = std::find(
-        matched_service_name_list.begin(),
-        matched_service_name_list.end(),
-        info.first);
-      if (found == matched_service_name_list.end()) {
+      if(!info.second->service_is_ready()) {
         del_servers.emplace_back(info.first);
       }
     }
@@ -158,7 +160,7 @@ ServiceClientProxyManager::add_new_load_balancing_service(
 }
 
 void
-ServiceClientProxyManager::remove_new_load_balancing_service(const std::string & remove_service)
+ServiceClientProxyManager::remove_load_balancing_service(const std::string & remove_service)
 {
   std::lock_guard<std::mutex> lock(registered_service_servers_info_mutex_);
   registered_service_servers_info_.erase(remove_service);

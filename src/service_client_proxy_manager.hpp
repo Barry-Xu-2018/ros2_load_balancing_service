@@ -51,7 +51,7 @@ public:
     const std::string & service_type,
     rclcpp::Node::SharedPtr & node,
     ResponseReceiveQueue::SharedPtr & response_queue,
-    std::chrono::seconds discovery_interval = std::chrono::seconds(2));
+    std::chrono::seconds discovery_interval = std::chrono::seconds(1));
 
   ~ServiceClientProxyManager();
 
@@ -70,7 +70,7 @@ public:
     const std::string & new_services,
     SharedClientProxy & client_proxy);
   void
-  remove_new_load_balancing_service(const std::string & new_services);
+  remove_load_balancing_service(const std::string & new_services);
 
   // LoadBalancingProccess will set add/remove callback
   void set_client_proxy_change_callback(

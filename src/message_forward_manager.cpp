@@ -98,7 +98,22 @@ void MessageForwardManager::handle_request_process(
 
     auto request = ret_value.value();
 
+    // Choose client proxy
     auto client_proxy = load_balancing_process->request_client_proxy();
+    while (client_proxy != nullptr) {
+      if (client_proxy->service_is_ready()) {
+        break;
+      }
+      client_proxy_mgr->remove_load_balancing_service(client_proxy->get_service_name());
+      load_balancing_process->unregister_client_proxy(client_proxy);
+      client_proxy = load_balancing_process->request_client_proxy();
+    }
+    if (client_proxy == nullptr) {
+      RCLCPP_ERROR(logger_, "No available client proxy to send request. "
+       "The request is discarded.");
+      continue;
+    }
+
     int64_t sequence_num;
     auto ret =
       client_proxy_mgr->async_send_request(
