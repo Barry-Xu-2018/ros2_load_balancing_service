@@ -109,6 +109,7 @@ LoadBalancingProcess::less_requests_to_choose_client_proxy()
   for (auto & [client_proxy, used_num]:client_proxy_info_) {
     if (used_num == 0) {
       return_client_proxy = client_proxy;
+      min_used_num = used_num;
       break;
     }
 
@@ -117,6 +118,10 @@ LoadBalancingProcess::less_requests_to_choose_client_proxy()
       min_used_num = used_num;
     }
   }
+
+  RCLCPP_DEBUG(logger_,
+    "Less requests strategy: choose %p, num %ld",
+    static_cast<void *>(return_client_proxy.get()), min_used_num);
 
   return return_client_proxy;
 }
