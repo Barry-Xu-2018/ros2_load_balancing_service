@@ -213,34 +213,38 @@ ServiceClientProxyManager::async_send_request(
   rclcpp::GenericService::SharedRequest & request,
   int64_t & sequence)
 {
-  auto callback = [this](rclcpp::GenericClient::SharedFuture future) {
-    service_client_callback(future);
+  auto send_index = get_send_index();
+
+  auto callback = [this, send_index](rclcpp::GenericClient::SharedFuture future) {
+    service_client_callback(future, send_index);
   };
 
   auto future = client_proxy->async_send_request(request.get(), callback);
 
   sequence = future.request_id;
 
-  // Save future
+  // Save send index and client proxy + sequence number
   {
     std::lock_guard<std::mutex> lock(client_proxy_futures_with_info_mutex_);
-    client_proxy_futures_with_info_[future.future] =
-      std::pair<SharedClientProxy, int64_t>(client_proxy, future.request_id);
+    client_proxy_futures_with_info_[send_index] =
+      std::pair<SharedClientProxy, int64_t>(client_proxy, sequence);
   }
 
   return true;
 }
 
 void
-ServiceClientProxyManager::service_client_callback(rclcpp::GenericClient::SharedFuture future)
+ServiceClientProxyManager::service_client_callback(
+  rclcpp::GenericClient::SharedFuture future,
+  u_int64_t send_index)
 {
   auto response = future.get();
   std::pair<SharedClientProxy, int64_t> client_proxy_and_sequence;
-  // Remove future
+  // Remove send index
   {
     std::lock_guard<std::mutex> lock(client_proxy_futures_with_info_mutex_);
-    client_proxy_and_sequence = client_proxy_futures_with_info_[future];
-    client_proxy_futures_with_info_.erase(future);
+    client_proxy_and_sequence = client_proxy_futures_with_info_[send_index];
+    client_proxy_futures_with_info_.erase(send_index);
   }
 
   // Put to response queue and MessageForwardManager handle it.
@@ -248,4 +252,12 @@ ServiceClientProxyManager::service_client_callback(rclcpp::GenericClient::Shared
     client_proxy_and_sequence.first,
     client_proxy_and_sequence.second,
     response);
+}
+
+uint64_t
+ServiceClientProxyManager::get_send_index()
+{
+  auto id = proxy_send_request_index.load();
+  proxy_send_request_index++;
+  return id;
 }

@@ -99,6 +99,8 @@ public:
     rclcpp::GenericService::SharedRequest & request,
     int64_t & sequence);
 
+  uint64_t get_send_index();
+
 private:
   const std::string class_name_ = "ServiceClientProxyManager";
   rclcpp::Logger logger_;
@@ -124,31 +126,20 @@ private:
   // Used service server list (corresponding service client proxy)
   std::unordered_map<std::string, SharedClientProxy> registered_service_servers_info_;
 
-  struct SharedFutureHash {
-    std::size_t operator()(const rclcpp::GenericClient::SharedFuture & sf) const {
-      return std::hash<void*>()(sf.get().get());
-    }
-  };
-
-  struct SharedFutureEqual {
-    bool operator()(const rclcpp::GenericClient::SharedFuture & lhs,
-                    const rclcpp::GenericClient::SharedFuture & rhs) const {
-        return lhs.get() == rhs.get();
-    }
-  };
+  // The index represents a request sent by a proxy client.
+  std::atomic<u_int64_t> proxy_send_request_index{0};
 
   // Save future after sending request
   // SharedFuture <--> SharedClientProxy and proxy request sequence
   std::mutex client_proxy_futures_with_info_mutex_;
-  std::unordered_map<rclcpp::GenericClient::SharedFuture,
-    std::pair<SharedClientProxy, int64_t>,
-    SharedFutureHash, SharedFutureEqual> client_proxy_futures_with_info_;
+  std::unordered_map<u_int64_t,
+    std::pair<SharedClientProxy, int64_t>> client_proxy_futures_with_info_;
 
   void
   discovery_service_server_thread(ServiceClientProxyManager::SharedPtr cli_proxy_mgr);
 
   void
-  service_client_callback(rclcpp::GenericClient::SharedFuture future);
+  service_client_callback(rclcpp::GenericClient::SharedFuture future, u_int64_t send_index);
 };
 
 #endif  // SERVICE_CLIENT_PROXY_MANAGER_HPP_
