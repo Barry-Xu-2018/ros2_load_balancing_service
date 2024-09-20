@@ -172,18 +172,10 @@ void MessageForwardManager::handle_response_process(
       load_balancing_process->get_request_info_from_corresponding_table(
         client_proxy, request_proxy_sequence);
     if (ret_request_id == std::nullopt) {
-      // The response returns too quickly, before the request handling thread has registered the
-      // information. So try again
-      std::this_thread::sleep_for(std::chrono::milliseconds(10));
-      ret_request_id =
-      load_balancing_process->get_request_info_from_corresponding_table(
-        client_proxy, request_proxy_sequence);
-      if (ret_request_id == std::nullopt) {
-        RCLCPP_ERROR(logger_,
-          "Failed to get request id based on client proxy (%s) and sequence (%ld).",
-          client_proxy->get_service_name(), request_proxy_sequence);
-        continue;
-      }
+      RCLCPP_ERROR(logger_,
+        "Failed to get request id based on client proxy (%s) and sequence (%ld).",
+        client_proxy->get_service_name(), request_proxy_sequence);
+      continue;
     }
 
     auto request_id = ret_request_id.value();
