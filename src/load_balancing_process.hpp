@@ -42,15 +42,10 @@ public:
   using SharedRequestID = std::shared_ptr<rmw_request_id_t>;
   using ProxyRequestSequence = int64_t;
 
-  explicit LoadBalancingProcess(LoadBalancingStrategy strategy = LoadBalancingStrategy::ROUND_ROBIN)
-  : logger_(rclcpp::get_logger(class_name_)),
-    strategy_(strategy)
-  {
-  }
+  explicit LoadBalancingProcess(
+    LoadBalancingStrategy strategy = LoadBalancingStrategy::ROUND_ROBIN);
 
-  ~ LoadBalancingProcess()
-  {
-  }
+  ~ LoadBalancingProcess(){}
 
   bool
   register_client_proxy(SharedClientProxy & client);
@@ -89,7 +84,7 @@ private:
 
   std::mutex corresponding_table_mutex_;
   // After choosing proxy client and sending request message (get proxy request sequence), register
-  // client proxy, proxy request sequence , request id
+  // client proxy, proxy request sequence, request id
   std::unordered_map<SharedClientProxy, std::unordered_map<ProxyRequestSequence, SharedRequestID>>
     corresponding_table_;
 

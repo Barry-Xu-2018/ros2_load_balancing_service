@@ -25,6 +25,12 @@ std::unordered_map<std::string, LoadBalancingStrategy>
   {"less_response_time", LoadBalancingStrategy::LESS_RESPONSE_TIME}
 };
 
+LoadBalancingProcess::LoadBalancingProcess(LoadBalancingStrategy strategy)
+: logger_(rclcpp::get_logger(class_name_)),
+  strategy_(strategy)
+{
+}
+
 bool
 LoadBalancingProcess::register_client_proxy(SharedClientProxy & client) {
   std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
@@ -129,8 +135,32 @@ LoadBalancingProcess::less_requests_to_choose_client_proxy()
 LoadBalancingProcess::SharedClientProxy
 LoadBalancingProcess::less_response_time_to_choose_client_proxy()
 {
-  // Calculation method is the same as the less request strategy
-  return less_requests_to_choose_client_proxy();
+  std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
+
+  if (client_proxy_info_.empty()) {
+    return nullptr;
+  }
+
+  LoadBalancingProcess::SharedClientProxy return_client_proxy;
+  int64_t min_response_time = INT64_MAX;
+  for (auto & [client_proxy, response_time]:client_proxy_info_) {
+    if (response_time == 0) {
+      return_client_proxy = client_proxy;
+      min_response_time = response_time;
+      break;
+    }
+
+    if (response_time < min_response_time) {
+      return_client_proxy = client_proxy;
+      min_response_time = response_time;
+    }
+  }
+
+  RCLCPP_DEBUG(logger_,
+    "Less response time: choose %p, average response time %ld ms",
+    static_cast<void *>(return_client_proxy.get()), min_response_time);
+
+  return return_client_proxy;
 }
 
 LoadBalancingProcess::SharedClientProxy
@@ -144,7 +174,7 @@ LoadBalancingProcess::request_client_proxy()
     return less_requests_to_choose_client_proxy();
   }
 
-  if (strategy_ == LoadBalancingStrategy::LESS_REQUESTS) {
+  if (strategy_ == LoadBalancingStrategy::LESS_RESPONSE_TIME) {
     return less_response_time_to_choose_client_proxy();
   }
 
@@ -238,8 +268,13 @@ LoadBalancingProcess::get_request_info_from_corresponding_table(
         {
           std::lock_guard<std::mutex> local_lock(client_proxy_info_mutex_);
           if (client_proxy_info_.count(client_proxy)) {
-            client_proxy_info_[client_proxy] =
-              (client_proxy_info_[client_proxy] + response_used_time.count())/2;
+            if (client_proxy_info_[client_proxy] == 0) {
+              // First set response time
+              client_proxy_info_[client_proxy] = response_used_time.count();
+            } else {
+              client_proxy_info_[client_proxy] =
+                (client_proxy_info_[client_proxy] + response_used_time.count())/2;
+            }
           }
         }
       }
