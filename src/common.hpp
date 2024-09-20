@@ -12,14 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#include "rclcpp/rclcpp.hpp"
+#ifndef COMMON_HPP_
+#define COMMON_HPP_
 
-#include "data_queues.hpp"
+#include <string>
 
-int main(int argc, char * argv[])
-{
-  rclcpp::init(argc, argv);
-  //rclcpp::spin(std::make_shared<Publisher>());
-  rclcpp::shutdown();
-  return 0;
-}
+// service name for load balancing
+// The format:
+// /NAMESPACE/PREFIX_LOAD_BALANCING/service_name/USER_INDEX
+
+const std::string PREFIX_LOAD_BALANCING = "load_balancing";
+
+bool
+is_load_balancing_service(const std::string & base_service_name, const std::string & service_name);
+
+#endif  // COMMON_HPP_

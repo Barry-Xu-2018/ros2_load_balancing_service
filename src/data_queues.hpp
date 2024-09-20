@@ -15,49 +15,87 @@
 #ifndef DATA_QUEUE_HPP_
 #define DATA_QUEUE_HPP_
 
+#include <atomic>
+#include <condition_variable>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <tuple>
 
+#include <rclcpp/rclcpp.hpp>
 #include <rmw/types.h>
-
-#include "service_client_proxy.hpp"
-
-using WRITER_GUID = int8_t[RMW_GID_STORAGE_SIZE];
 
 template<typename T1, typename T2, typename T3>
 class QueueBase {
 public:
   using Data_Type = std::tuple<T1, T2, T3>;
+  using SharedPtr = std::shared_ptr<QueueBase<T1, T2, T3>>;
 
   QueueBase() = default;
   ~QueueBase() = default;
 
-  void in_queue(T1 v1, T2 v2, T3 v3)
+  void in_queue(T1 & v1, T2 & v2, T3 & v3)
   {
-    std::lock_guard<std::mutex> lock(queue_mutex_);
-    queue_.emplace(Data_Type(v1, v2, v3));
+    if (shutdown_.load()) {
+      return;
+    }
+
+    {
+      std::lock_guard<std::mutex> lock(queue_mutex_);
+      queue_.emplace(Data_Type(v1, v2, v3));
+    }
+    cv_.notify_one();
   }
 
-  Data_Type out_queue(void)
+  std::optional<Data_Type> out_queue(void)
   {
-    std::lock_guard<std::mutex> lock(queue_mutex_);
-    auto data = queue_.front();
-    queue_.pop();
-    return data;
+    if (shutdown_.load()) {
+      return std::nullopt;
+    } else {
+      std::lock_guard<std::mutex> lock(queue_mutex_);
+      auto data = queue_.front();
+      queue_.pop();
+      return data;
+    }
+  }
+
+  void wait(void) {
+    std::unique_lock lock(cond_mutex_);
+    cv_.wait(
+      lock,
+      [this] {
+        std::lock_guard<std::mutex> lock(queue_mutex_);
+        return !queue_.empty() || shutdown_.load();});
+  }
+
+  void shutdown(void) {
+    shutdown_.store(true);
+    cv_.notify_one();
   }
 
 private:
   std::mutex queue_mutex_;
   std::queue<Data_Type> queue_;
+
+  std::mutex cond_mutex_;
+  std::condition_variable cv_;
+
+  std::atomic_bool shutdown_{false};
 };
 
-// The queue for ServiceServerProxy to save received request from real service client
-using Request_Receive_Queue = class QueueBase<WRITER_GUID, int64_t, std::shared_ptr<void>>;
+using SharedRequestID = std::shared_ptr<rmw_request_id_t>;
+using SharedRequestMsg = std::shared_ptr<void>;
+using SharedResponseMsg = std::shared_ptr<void>;
 
-// The queue for ServiceClientProxy to save received response from real service server
-using Response_Receive_Queue =
-  class QueueBase<std::shared_ptr<ServiceClientProxy>, int64_t, std::shared_ptr<void>>;
+// The queue for Service Server proxy to save received request from real service client
+// std::shared_ptr<rmw_request_id_t> (WRITE_GUID + sequence), Not_Used, request
+using RequestReceiveQueue =
+  class QueueBase<SharedRequestID, int64_t, SharedRequestMsg>;
+
+// The queue for Service client proxy to save received response from real service server
+// client proxy, sequence, response
+using ResponseReceiveQueue =
+  class QueueBase<rclcpp::GenericClient::SharedPtr, int64_t, SharedResponseMsg>;
 
 #endif  // DATA_QUEUE_HPP_
