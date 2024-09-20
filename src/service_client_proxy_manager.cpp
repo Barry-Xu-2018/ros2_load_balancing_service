@@ -55,8 +55,8 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
             add_new_load_balancing_service(new_service, client_proxy);
             RCLCPP_DEBUG(
               logger_,
-              "Find a new service server \"%s\" and register client proxy.",
-              new_service.c_str());
+              "Find a new service server \"%s\" and register client proxy %p.",
+              new_service.c_str(), static_cast<void *>(client_proxy.get()));
           }
         }
 
@@ -67,8 +67,8 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
             remove_load_balancing_service(removed_service);
             RCLCPP_DEBUG(
               logger_,
-              "Find a removed service server \"%s\" and unregister client proxy.",
-              removed_service.c_str());
+              "Find a removed service server \"%s\" and unregister client proxy %p.",
+              removed_service.c_str(), static_cast<void *>(client_proxy.get()));
           }
         }
 
