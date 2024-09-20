@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+#include <chrono>
 #include <cstdlib>
 #include <string>
 #include <memory>
@@ -26,54 +27,126 @@
 #include "service_client_proxy_manager.hpp"
 #include "service_server_proxy.hpp"
 
+void usage(char * name)
+{
+  printf("Usage:\n    %s [-h|--help] [-s|--service-name SERVICE_NAME] [-t|--service-type "
+    "SERVICE_TYPE] [--strategy XXX] [-i|--interval TIME]\n"
+    "       --strategy choose one of \"round_robin\", \"less_requests\" and \"less_response_time\"\n"
+    "                  If not set, \"round_robin\" is used as default.\n"
+    "                  \"round_robin\": select the service server in order.\n"
+    "                  \"less_requests\": select the service server with the fewest requests.\n"
+    "                  \"less_response_time\": select the service server with the shortest average response time.\n"
+    "       --interval Interval to discovery service servers. Unit is second.\n"
+    "                  If not set, default is 1s.\n",
+    name);
+}
+
+#define FAIL_RETURN \
+do {\
+  rclcpp::shutdown(); \
+  return EXIT_FAILURE; \
+} while (0)
+
 int main(int argc, char * argv[])
 {
   const std::string node_name = "load_balancing_service_management";
 
   rclcpp::init(argc, argv);
 
-  auto node = std::make_shared<rclcpp::Node>(
-    node_name, rclcpp::NodeOptions().start_parameter_services(false));
+  auto logger = rclcpp::get_logger("main");
 
-  auto srv_name = node->declare_parameter("srv_name", "");
+  std::string service_name;
+  std::string service_type;
+  std::string load_balancing_strategy;
+  std::string interval_str;
 
-  auto srv_type = node->declare_parameter("srv_type", "");
-
-  auto load_balancing_strategy =
-    node->declare_parameter("strategy", "");
-
-  // Check input service name
-  if (srv_name.empty()) {
-    RCLCPP_ERROR(rclcpp::get_logger("main"),
-      "Unknow service name. Please specify --ros-args -p srv_name:=");
-    rclcpp::shutdown();
-    return EXIT_FAILURE;
-  }
-
-  // Check input service type
-  if (srv_type.empty()) {
-    RCLCPP_ERROR(rclcpp::get_logger("main"),
-      "Unknow service type. Please specify --ros-args -p srv_type:=");
-    rclcpp::shutdown();
-    return EXIT_FAILURE;
-  }
-
-  // Checking input loading balance strategy
-  if (load_balancing_strategy.empty() ||
-    !LoadBalancingProcess::supported_load_balancing_strategy.count(load_balancing_strategy)) {
-
-    std::string all_supported_strategy;
-    for (auto & pair: LoadBalancingProcess::supported_load_balancing_strategy) {
-      all_supported_strategy += pair.first + ", ";
+  // Parser parameters
+  for (int i = 0; i < argc; ++i)
+  {
+    if ((std::strcmp(argv[i], "--service-name") == 0 ||
+      std::strcmp(argv[i], "-s") == 0) && i + 1 < argc)
+    {
+      service_name = argv[i + 1];
+      i++;
     }
 
-    RCLCPP_ERROR(rclcpp::get_logger("main"),
-      "Unknow strategy name. Please specify --ros-args -p strategy:=\n"
-      "Please chose one of %s",
-      (all_supported_strategy.erase(all_supported_strategy.size() - 2, 2)).c_str());
-    rclcpp::shutdown();
-    return EXIT_FAILURE;
+    if ((std::strcmp(argv[i], "--service-type") == 0 ||
+      std::strcmp(argv[i], "-t") == 0) && i + 1 < argc)
+    {
+      service_type = argv[i + 1];
+      i++;
+    }
+
+    if (std::strcmp(argv[i], "--strategy") == 0 && i + 1 < argc) {
+      load_balancing_strategy = argv[i + 1];
+      i++;
+    }
+
+    if ((std::strcmp(argv[i], "--interval") == 0 ||
+      std::strcmp(argv[i], "-i") == 0) && i + 1 < argc)
+    {
+      interval_str = argv[i + 1];
+      i++;
+    }
+
+    if (std::strcmp(argv[i], "-h") == 0 || std::strcmp(argv[i], "--help") == 0) {
+      usage(argv[0]);
+      rclcpp::shutdown();
+      return EXIT_SUCCESS;
+    }
   }
+
+  if (service_name.empty()) {
+    RCLCPP_ERROR(logger,
+      "Not set service name. Please specify -s SERVICE_NAME");
+    FAIL_RETURN;
+  } else {
+    if (service_name[0] == '-') {
+      RCLCPP_ERROR(logger,
+        "Invaild service name \"%s\".", service_name.c_str());
+      FAIL_RETURN;
+    }
+  }
+
+  if (service_type.empty()) {
+    RCLCPP_ERROR(logger,
+      "Not set service type. Please specify -t SERVICE_TYPE");
+    FAIL_RETURN;
+  } else {
+    if (service_type[0] == '-') {
+      RCLCPP_ERROR(logger,
+        "Invaild service type \"%s\".", service_type.c_str());
+      FAIL_RETURN;
+    }
+  }
+
+  if (load_balancing_strategy.empty()) {
+    load_balancing_strategy = "round_robin";
+  } else {
+    if (!LoadBalancingProcess::supported_load_balancing_strategy.count(load_balancing_strategy)) {
+      RCLCPP_ERROR(logger,
+        "Invaild strategy name \"%s\".\nPlease use one of \"round_robin\", "
+        "\"less_requests\" and \"less_response_time\" as strategy name",
+        load_balancing_strategy.c_str());
+      FAIL_RETURN;
+    }
+  }
+
+  uint32_t interval;
+  if (interval_str.empty()) {
+    interval = 1;
+  } else {
+    try {
+      interval = static_cast<uint32_t>(std::stoul(interval_str));
+    } catch (...) {
+      RCLCPP_ERROR(logger,
+        "Invaild input interval \"%s\".", interval_str.c_str());
+      FAIL_RETURN;
+    }
+  }
+
+  auto node = std::make_shared<rclcpp::Node>(
+    node_name, rclcpp::NodeOptions().start_parameter_services(false));
 
   auto request_queue = std::make_shared<RequestReceiveQueue>();
   auto response_queue = std::make_shared<ResponseReceiveQueue>();
@@ -82,10 +155,11 @@ int main(int argc, char * argv[])
     LoadBalancingProcess::supported_load_balancing_strategy[load_balancing_strategy]);
 
   auto client_proxy_manager =
-    std::make_shared<ServiceClientProxyManager>(srv_name, srv_type, node, response_queue);
+    std::make_shared<ServiceClientProxyManager>(
+      service_name, service_type, node, response_queue, std::chrono::seconds(interval));
 
   auto service_proxy =
-    std::make_shared<ServiceServerProxy>(srv_name, srv_type, node, request_queue);
+    std::make_shared<ServiceServerProxy>(service_name, service_type, node, request_queue);
 
   auto message_forward_manager =
     std::make_shared<MessageForwardManager>(
@@ -94,11 +168,17 @@ int main(int argc, char * argv[])
   // Start to discovery service server
   client_proxy_manager->start_discovery_service_servers_thread();
 
-  RCLCPP_INFO(rclcpp::get_logger("main"),
-    "\nLoad balancing service name: %s\n"
-    "               Service type: %s\n"
-    "    Load balancing strategy: %s",
-    service_proxy->get_service_name(), srv_type.c_str(), load_balancing_strategy.c_str());
+  RCLCPP_INFO(logger,
+    "\n   Load balancing service name: %s\n"
+    "                  Service type: %s\n"
+    "       Load balancing strategy: %s\n"
+    "  Interval to discovery server: %ds\n"
+    "------------------------------\n"
+    "Service client remap service name to %s\n"
+    "Service server remap service name to %s/XXX\n"
+    "------------------------------",
+    service_proxy->get_service_name(), service_type.c_str(), load_balancing_strategy.c_str(),
+    interval, service_proxy->get_service_name(), service_proxy->get_service_name());
 
   rclcpp::executors::MultiThreadedExecutor exec;
   exec.add_node(node);
