@@ -16,27 +16,28 @@
 
 #include <rclcpp/logging.hpp>
 
-#include "message_forward_manager.hpp"
+#include "message_forward_process.hpp"
 
-MessageForwardManager::MessageForwardManager(
+MessageForwardProcess::MessageForwardProcess(
   ServiceServerProxy::SharedPtr & srv_proxy,
   ServiceClientProxyManager::SharedPtr & cli_proxy_mgr,
-  LoadBalancingProcess::SharedPtr & load_balancing_process,
+  ForwardManagement::SharedPtr & forward_management,
   RequestReceiveQueue::SharedPtr & request_queue,
   ResponseReceiveQueue::SharedPtr & response_queue)
   : logger_(rclcpp::get_logger(class_name_)),
     srv_proxy_(srv_proxy),
     cli_proxy_mgr_(cli_proxy_mgr),
-    load_balancing_process_(load_balancing_process),
+    forward_management_(forward_management),
     request_queue_(request_queue),
     response_queue_(response_queue)
 {
+  #if 0
   // When a new service server is added, the corresponding client proxy will be created. The
   // LoadBalancingProcess will be notified through the MessageForwardManager.
   auto register_client_proxy =
     [this] (ServiceClientProxyManager::SharedClientProxy & cli_proxy) -> bool
     {
-      return this->load_balancing_process_->register_client_proxy(cli_proxy);
+      return this->forward_management_->register_client_proxy(cli_proxy);
     };
 
   // When a new service server is removed, the corresponding client proxy will be removed. The
@@ -44,25 +45,26 @@ MessageForwardManager::MessageForwardManager(
   auto unregister_client_proxy =
     [this] (ServiceClientProxyManager::SharedClientProxy & cli_proxy) -> bool
     {
-       return this->load_balancing_process_->unregister_client_proxy(cli_proxy);
+       return this->forward_management_->unregister_client_proxy(cli_proxy);
     };
 
   cli_proxy_mgr_->set_client_proxy_change_callback(
     register_client_proxy,
     unregister_client_proxy);
+  #endif
 
   auto thread_handle_request_process = [this] () {
-      handle_request_process(request_queue_, load_balancing_process_, cli_proxy_mgr_, logger_);
+      handle_request_process(request_queue_, forward_management_, cli_proxy_mgr_, logger_);
     };
   handle_request_thread_ = std::thread(thread_handle_request_process);
 
   auto thread_handle_response_process = [this] () {
-    handle_response_process(response_queue_, load_balancing_process_, srv_proxy_, logger_);
+    handle_response_process(response_queue_, forward_management_, srv_proxy_, logger_);
   };
   handle_response_thread_ = std::thread(thread_handle_response_process);
 }
 
-MessageForwardManager::~MessageForwardManager()
+MessageForwardProcess::~MessageForwardProcess()
 {
   // Remove callback
   cli_proxy_mgr_->set_client_proxy_change_callback(
@@ -80,9 +82,9 @@ MessageForwardManager::~MessageForwardManager()
   handle_response_thread_.join();
 }
 
-void MessageForwardManager::handle_request_process(
+void MessageForwardProcess::handle_request_process(
   RequestReceiveQueue::SharedPtr & request_queue,
-  LoadBalancingProcess::SharedPtr & load_balancing_process,
+  ForwardManagement::SharedPtr & forward_management,
   ServiceClientProxyManager::SharedPtr & client_proxy_mgr,
   rclcpp::Logger & logger)
 {
@@ -91,7 +93,7 @@ void MessageForwardManager::handle_request_process(
     request_queue->wait();
 
     auto ret_value = request_queue->out_queue();
-    if (ret_value == std::nullopt) {
+    if (!ret_value.has_value()) {
       // Request queue is shutdown, exit request handle thread.
       break;
     }
@@ -99,16 +101,16 @@ void MessageForwardManager::handle_request_process(
     auto request = ret_value.value();
 
     // Choose client proxy
-    auto client_proxy = load_balancing_process->request_client_proxy();
-    while (client_proxy != nullptr) {
-      if (client_proxy->service_is_ready()) {
+    auto client_proxy = forward_management->request_client_proxy();
+    while (client_proxy.has_value()) {
+      if (client_proxy.value()->service_is_ready()) {
         break;
       }
-      client_proxy_mgr->remove_load_balancing_service(client_proxy->get_service_name());
-      load_balancing_process->unregister_client_proxy(client_proxy);
-      client_proxy = load_balancing_process->request_client_proxy();
+      client_proxy_mgr->remove_load_balancing_service(client_proxy.value()->get_service_name());
+      forward_management->unregister_client_proxy(client_proxy.value());
+      client_proxy = forward_management->request_client_proxy();
     }
-    if (client_proxy == nullptr) {
+    if (!client_proxy.has_value()) {
       RCLCPP_ERROR(logger_, "No available client proxy to send request. "
        "The request is discarded.");
       continue;
@@ -117,10 +119,10 @@ void MessageForwardManager::handle_request_process(
     int64_t sequence_num;
     auto ret =
       client_proxy_mgr->async_send_request(
-        client_proxy, std::get<SharedRequestMsg>(request) ,sequence_num);
+        client_proxy.value(), std::get<SharedRequestMsg>(request) ,sequence_num);
     if (!ret) {
       RCLCPP_ERROR(logger_,
-        "Failed to send request to %s", client_proxy->get_service_name());
+        "Failed to send request to %s", client_proxy.value()->get_service_name());
       continue;
     }
 
@@ -133,23 +135,24 @@ void MessageForwardManager::handle_request_process(
       std::get<SharedRequestID>(request)->writer_guid[5],
       std::get<SharedRequestID>(request)->writer_guid[6],
       std::get<SharedRequestID>(request)->writer_guid[7],
-      std::get<SharedRequestID>(request)->sequence_number, static_cast<void *>(client_proxy.get()));
+      std::get<SharedRequestID>(request)->sequence_number,
+      static_cast<void *>(client_proxy.value().get()));
 
-    ret = load_balancing_process->add_one_record_to_corresponding_table(
-      client_proxy, sequence_num, std::get<SharedRequestID>(request));
+    ret = forward_management->add_one_record_to_corresponding_table(
+      client_proxy.value(), sequence_num, std::get<SharedRequestID>(request));
     if (!ret) {
       RCLCPP_ERROR(logger_,
         "Failed to record proxy client (%s, sequence:%ld)",
-        client_proxy->get_service_name(), sequence_num);
+        client_proxy.value()->get_service_name(), sequence_num);
       continue;
     }
   }
   RCLCPP_INFO(logger_, "Request handle thread exits.");
 }
 
-void MessageForwardManager::handle_response_process(
+void MessageForwardProcess::handle_response_process(
   ResponseReceiveQueue::SharedPtr & response_queue,
-  LoadBalancingProcess::SharedPtr & load_balancing_process,
+  ForwardManagement::SharedPtr & forward_management,
   ServiceServerProxy::SharedPtr & srv_proxy,
   rclcpp::Logger & logger)
 {
@@ -169,7 +172,7 @@ void MessageForwardManager::handle_response_process(
     auto client_proxy = std::get<rclcpp::GenericClient::SharedPtr>(response);
 
     auto ret_request_id =
-      load_balancing_process->get_request_info_from_corresponding_table(
+      forward_management->get_request_info_from_corresponding_table(
         client_proxy, request_proxy_sequence);
     if (ret_request_id == std::nullopt) {
       RCLCPP_ERROR(logger_,

@@ -44,7 +44,7 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
 {
   auto discovery_service_server_thread =
     [this](){
-      while (check_thread_status()) {
+      while (check_thread_running()) {
         // Return new service server list and removed service server list
         auto change_info = check_service_server_change();
 
@@ -92,12 +92,12 @@ ServiceClientProxyManager::set_client_proxy_change_callback(
   ClientProxyChangeCallbackType func_remove)
 {
   std::lock_guard<std::mutex> lock(callback_mutex_);
-  add_callback_ = func_add;
-  remove_callback_ = func_remove;
+  add_callback_ = std::move(func_add);
+  remove_callback_ = std::move(func_remove);
 }
 
 bool
-ServiceClientProxyManager::check_thread_status(void)
+ServiceClientProxyManager::check_thread_running(void)
 {
   return !thread_exit_.load();
 }

@@ -16,23 +16,23 @@
 
 #include <rclcpp/logging.hpp>
 
-#include "load_balancing_process.hpp"
+#include "forward_management.hpp"
 
 std::unordered_map<std::string, LoadBalancingStrategy>
-  LoadBalancingProcess::supported_load_balancing_strategy = {
+  ForwardManagement::supported_load_balancing_strategy = {
   {"round_robin", LoadBalancingStrategy::ROUND_ROBIN},
   {"less_requests", LoadBalancingStrategy::LESS_REQUESTS},
   {"less_response_time", LoadBalancingStrategy::LESS_RESPONSE_TIME}
 };
 
-LoadBalancingProcess::LoadBalancingProcess(LoadBalancingStrategy strategy)
+ForwardManagement::ForwardManagement(LoadBalancingStrategy strategy)
 : logger_(rclcpp::get_logger(class_name_)),
   strategy_(strategy)
 {
 }
 
 bool
-LoadBalancingProcess::register_client_proxy(SharedClientProxy & client) {
+ForwardManagement::register_client_proxy(SharedClientProxy & client) {
   std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
 
   auto found = client_proxy_info_.find(client);
@@ -43,12 +43,12 @@ LoadBalancingProcess::register_client_proxy(SharedClientProxy & client) {
   }
 
   // For initialization, the number of users is set to 0.
-  client_proxy_info_[client] = 0;
+  client_proxy_info_[client] = {0, 0};
   return true;
 }
 
 bool
-LoadBalancingProcess::unregister_client_proxy(SharedClientProxy & client) {
+ForwardManagement::unregister_client_proxy(SharedClientProxy & client) {
   // clean client proxy list
   {
     std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
@@ -83,13 +83,13 @@ LoadBalancingProcess::unregister_client_proxy(SharedClientProxy & client) {
   return true;
 }
 
-LoadBalancingProcess::SharedClientProxy
-LoadBalancingProcess::round_robin_to_choose_client_proxy()
+std::optional<ForwardManagement::SharedClientProxy>
+ForwardManagement::round_robin_to_choose_client_proxy()
 {
   std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
 
   if (client_proxy_info_.empty()) {
-    return nullptr;
+    return std::nullopt;
   }
 
   if (round_robin_pointer_ == client_proxy_info_.end()
@@ -97,22 +97,23 @@ LoadBalancingProcess::round_robin_to_choose_client_proxy()
     round_robin_pointer_ = client_proxy_info_.begin();
   }
 
-  round_robin_pointer_->second++;
+  round_robin_pointer_->second.first++; // Increase the value of the usage counter.
   return round_robin_pointer_->first;
 }
 
-LoadBalancingProcess::SharedClientProxy
-LoadBalancingProcess::less_requests_to_choose_client_proxy()
+std::optional<ForwardManagement::SharedClientProxy>
+ForwardManagement::less_requests_to_choose_client_proxy()
 {
   std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
 
   if (client_proxy_info_.empty()) {
-    return nullptr;
+    return std::nullopt;
   }
 
-  LoadBalancingProcess::SharedClientProxy return_client_proxy;
+  ForwardManagement::SharedClientProxy return_client_proxy;
   int64_t min_used_num = INT64_MAX;
-  for (auto & [client_proxy, used_num]:client_proxy_info_) {
+  for (auto & [client_proxy, use_info]:client_proxy_info_) {
+    auto & used_num = use_info.first;
     if (used_num == 0) {
       return_client_proxy = client_proxy;
       min_used_num = used_num;
@@ -132,22 +133,35 @@ LoadBalancingProcess::less_requests_to_choose_client_proxy()
   return return_client_proxy;
 }
 
-LoadBalancingProcess::SharedClientProxy
-LoadBalancingProcess::less_response_time_to_choose_client_proxy()
+std::optional<ForwardManagement::SharedClientProxy>
+ForwardManagement::less_response_time_to_choose_client_proxy()
 {
   std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
 
   if (client_proxy_info_.empty()) {
-    return nullptr;
+    return std::nullopt;
   }
 
-  LoadBalancingProcess::SharedClientProxy return_client_proxy;
+  ForwardManagement::SharedClientProxy return_client_proxy;
   int64_t min_response_time = INT64_MAX;
-  for (auto & [client_proxy, response_time]:client_proxy_info_) {
+  int64_t min_used_num = INT64_MAX;
+  for (auto & [client_proxy, use_info]:client_proxy_info_) {
+    auto &[used_num, response_time] = use_info;
     if (response_time == 0) {
-      return_client_proxy = client_proxy;
-      min_response_time = response_time;
-      break;
+      if (used_num == 0) {
+        return_client_proxy = client_proxy;
+        min_response_time = response_time;
+        break;
+      } else {
+        // If the response takes a long time to return, there might already be multiple request
+        // sending. In this scenario, the client proxy with the fewest number of requests will be
+        // used.
+        if (used_num < min_used_num) {
+          min_used_num = used_num;
+          return_client_proxy = client_proxy;
+        }
+        continue;
+      }
     }
 
     if (response_time < min_response_time) {
@@ -163,8 +177,8 @@ LoadBalancingProcess::less_response_time_to_choose_client_proxy()
   return return_client_proxy;
 }
 
-LoadBalancingProcess::SharedClientProxy
-LoadBalancingProcess::request_client_proxy()
+std::optional<ForwardManagement::SharedClientProxy>
+ForwardManagement::request_client_proxy()
 {
   if (strategy_ == LoadBalancingStrategy::ROUND_ROBIN) {
     return round_robin_to_choose_client_proxy();
@@ -178,11 +192,11 @@ LoadBalancingProcess::request_client_proxy()
     return less_response_time_to_choose_client_proxy();
   }
 
-  return nullptr;
+  return std::nullopt;
 }
 
 bool
-LoadBalancingProcess::add_one_record_to_corresponding_table(
+ForwardManagement::add_one_record_to_corresponding_table(
   SharedClientProxy & client_proxy,
   ProxyRequestSequence proxy_request_sequence,
   SharedRequestID & shared_request_id)
@@ -204,17 +218,18 @@ LoadBalancingProcess::add_one_record_to_corresponding_table(
   }
 
   switch (strategy_) {
-    case LoadBalancingStrategy::LESS_REQUESTS:
-      {
-        std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
-        client_proxy_info_[client_proxy]++;
-      }
-      break;
     case LoadBalancingStrategy::LESS_RESPONSE_TIME:
       {
         std::lock_guard<std::mutex> lock(send_proxy_request_time_table_mutex_);
         send_proxy_request_time_table_[client_proxy][proxy_request_sequence]
           = std::chrono::steady_clock::now();
+      }
+      // LESS_RESPONSE_TIME also need to the following operation. So not break.
+      [[fallthrough]];
+    case LoadBalancingStrategy::LESS_REQUESTS:
+      {
+        std::lock_guard<std::mutex> lock(client_proxy_info_mutex_);
+        client_proxy_info_[client_proxy].first++;
       }
       break;
     default:
@@ -224,12 +239,12 @@ LoadBalancingProcess::add_one_record_to_corresponding_table(
   return true;
 }
 
-std::optional<LoadBalancingProcess::SharedRequestID>
-LoadBalancingProcess::get_request_info_from_corresponding_table(
+std::optional<ForwardManagement::SharedRequestID>
+ForwardManagement::get_request_info_from_corresponding_table(
   SharedClientProxy & client_proxy,
   ProxyRequestSequence proxy_request_sequence)
 {
-  std::optional<LoadBalancingProcess::SharedRequestID> ret_value = std::nullopt;
+  std::optional<ForwardManagement::SharedRequestID> ret_value = std::nullopt;
   {
     std::lock_guard<std::mutex> lock(corresponding_table_mutex_);
     if (!corresponding_table_.count(client_proxy)
@@ -248,7 +263,7 @@ LoadBalancingProcess::get_request_info_from_corresponding_table(
       // Reduce the number of processed requests
       {
         std::lock_guard<std::mutex> local(client_proxy_info_mutex_);
-        client_proxy_info_[client_proxy]--;
+        client_proxy_info_[client_proxy].first--;
       }
       break;
     case LoadBalancingStrategy::LESS_RESPONSE_TIME:
@@ -268,13 +283,16 @@ LoadBalancingProcess::get_request_info_from_corresponding_table(
         {
           std::lock_guard<std::mutex> local_lock(client_proxy_info_mutex_);
           if (client_proxy_info_.count(client_proxy)) {
-            if (client_proxy_info_[client_proxy] == 0) {
+            if (client_proxy_info_[client_proxy].second == 0) {
               // First set response time
-              client_proxy_info_[client_proxy] = response_used_time.count();
+              client_proxy_info_[client_proxy].second = response_used_time.count();
             } else {
-              client_proxy_info_[client_proxy] =
-                (client_proxy_info_[client_proxy] + response_used_time.count())/2;
+              client_proxy_info_[client_proxy].second =
+                (client_proxy_info_[client_proxy].second + response_used_time.count())/2;
             }
+          } else {
+              RCLCPP_ERROR(logger_,
+                "Not find corresponding client proxy for %s", client_proxy->get_service_name());
           }
         }
       }

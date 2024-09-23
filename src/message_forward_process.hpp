@@ -12,32 +12,36 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-#ifndef MESSAGE_FORWARD_MANAGER_HPP_
-#define MESSAGE_FORWARD_MANAGER_HPP_
+#ifndef MESSAGE_FORWARD_PROCESS_HPP_
+#define MESSAGE_FORWARD_PROCESS_HPP_
 
 #include "data_queues.hpp"
-#include "load_balancing_process.hpp"
+#include "forward_management.hpp"
 #include "service_client_proxy_manager.hpp"
 #include "service_server_proxy.hpp"
 
-class MessageForwardManager {
+/**
+ * @brief Manage two threads: one is responsible for handling the request queue, and the other is
+ *   responsible for handling the response queue
+ */
+class MessageForwardProcess {
 public:
-  MessageForwardManager(
+  MessageForwardProcess(
     ServiceServerProxy::SharedPtr & srv_proxy,
     ServiceClientProxyManager::SharedPtr & cli_proxy_mgr,
-    LoadBalancingProcess::SharedPtr & load_balancing_process,
+    ForwardManagement::SharedPtr & forward_management,
     RequestReceiveQueue::SharedPtr & request_queue,
     ResponseReceiveQueue::SharedPtr & response_queue);
 
-  ~MessageForwardManager();
+  ~MessageForwardProcess();
 
 private:
-  const std::string class_name_ = "MessageForwardManager";
+  const std::string class_name_ = "MessageForwardProcess";
   rclcpp::Logger logger_;
 
   ServiceServerProxy::SharedPtr srv_proxy_;
   ServiceClientProxyManager::SharedPtr cli_proxy_mgr_;
-  LoadBalancingProcess::SharedPtr load_balancing_process_;
+  ForwardManagement::SharedPtr forward_management_;
   RequestReceiveQueue::SharedPtr request_queue_;
   ResponseReceiveQueue::SharedPtr response_queue_;
 
@@ -48,15 +52,15 @@ private:
 
   void handle_request_process(
     RequestReceiveQueue::SharedPtr & request_queue,
-    LoadBalancingProcess::SharedPtr & load_balancing_process,
+    ForwardManagement::SharedPtr & forward_management,
     ServiceClientProxyManager::SharedPtr & cli_proxy_mgr,
     rclcpp::Logger & logger);
 
   void handle_response_process(
     ResponseReceiveQueue::SharedPtr & response_queue,
-    LoadBalancingProcess::SharedPtr & load_balancing_process,
+    ForwardManagement::SharedPtr & forward_management,
     ServiceServerProxy::SharedPtr & srv_proxy,
     rclcpp::Logger & logger);
 };
 
-#endif  // MESSAGE_FORWARD_MANAGER_HPP_
+#endif  // MESSAGE_FORWARD_PROCESS_HPP_

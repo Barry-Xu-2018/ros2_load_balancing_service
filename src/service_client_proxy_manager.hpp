@@ -55,30 +55,90 @@ public:
 
   ~ServiceClientProxyManager();
 
-  SharedClientProxy create_service_proxy(const std::string service_name);
-
-  void
-  start_discovery_service_servers_thread();
-  bool
-  check_thread_status(void);
-
-  std::pair<std::vector<std::string>, std::vector<std::string>>
-  check_service_server_change();
-
-  void
-  add_new_load_balancing_service(
-    const std::string & new_services,
-    SharedClientProxy & client_proxy);
-  void
-  remove_load_balancing_service(const std::string & new_services);
-
-  // LoadBalancingProccess will set add/remove callback
+  /**
+   * @brief Set the callback function to be called when a load balancing service is added or
+   *   removed.
+   *
+   * @param func_add A callback for adding a new load balancing service server
+   * @param func_remove A callback for removing a load balancing service server
+   */
   void set_client_proxy_change_callback(
     ClientProxyChangeCallbackType func_add,
     ClientProxyChangeCallbackType func_remove);
 
-  // Discovery thread will use below 2 functions to notify service server change to
-  // LoadBalancingProccess
+  /**
+   * @brief Send a request to the load balancing service server using the specified service client
+   *   proxy
+   *
+   * @param client_proxy Specified service client proxy
+   * @param request Untyped request message
+   * @param sequence Output sequence number of sending request
+   * @return True if sending successfully, otherwise False.
+   */
+  bool
+  async_send_request(
+    SharedClientProxy & client_proxy,
+    rclcpp::GenericService::SharedRequest & request,
+    int64_t & sequence);
+
+  // The following functions are provided for the discovery thread to call
+
+  /**
+   * @brief Create generic client to specified service name
+   *
+   * @param service_name service name to be connected by created generic client
+   * @return A shared pointer to GenericClient.
+   */
+  SharedClientProxy
+  create_service_proxy(const std::string service_name);
+
+  /**
+   * @brief Start a thread to periodically discover new load balancing service servers.
+   */
+  void
+  start_discovery_service_servers_thread();
+
+  /**
+   * @brief Check the flag indicating whether the thread is running.
+   *
+   * @return True if thread keep running, False if thread need to terminate.
+   */
+  bool
+  check_thread_running(void);
+
+  /**
+   * @brief Check for changes in the load balancing service server.
+   *
+   * @return return two vectors. One stores the names of all added service servers and the other
+   *   stores the names of all disappeared service servers.
+   */
+  std::pair<std::vector<std::string>, std::vector<std::string>>
+  check_service_server_change();
+
+  /**
+   * @brief Record the name of a newly added service server and its corresponding service client
+   *   proxy.
+   * These records are maintained by the ServiceClientProxyManager itself.
+   *
+   * @param new_services A new load balancing service name
+   * @param client_proxy Corresponding service client proxy
+   */
+  void
+  add_new_load_balancing_service(
+    const std::string & new_services,
+    SharedClientProxy & client_proxy);
+
+  /**
+   * @brief Remove a record of service server name and its corresponding service client proxy.
+   * These records are maintained by the ServiceClientProxyManager itself.
+   *
+   * @param new_services load balancing service name to be removed.
+   */
+  void
+  remove_load_balancing_service(const std::string & new_services);
+
+  // Discovery thread will use below 2 functions to notify load balancing service server change to
+  // ForwardManagement.
   bool
   register_new_client_proxy(SharedClientProxy & cli_proxy);
   bool
@@ -92,14 +152,6 @@ public:
 
   SharedClientProxy
   get_created_client_proxy(const std::string & service_name);
-
-  bool
-  async_send_request(
-    SharedClientProxy & client_proxy,
-    rclcpp::GenericService::SharedRequest & request,
-    int64_t & sequence);
-
-  uint64_t get_send_index();
 
 private:
   const std::string class_name_ = "ServiceClientProxyManager";
@@ -140,6 +192,8 @@ private:
 
   void
   service_client_callback(rclcpp::GenericClient::SharedFuture future, u_int64_t send_index);
+
+  uint64_t get_send_index();
 };
 
 #endif  // SERVICE_CLIENT_PROXY_MANAGER_HPP_

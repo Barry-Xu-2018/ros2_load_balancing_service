@@ -20,9 +20,16 @@
 // service name for load balancing
 // The format:
 // /NAMESPACE/PREFIX_LOAD_BALANCING/service_name/USER_INDEX
-
 const std::string PREFIX_LOAD_BALANCING = "load_balancing";
 
+/**
+ * @brief Determine if a service name belongs to a load balancing service.
+ *
+ * @param base_service_name original service name
+ * @param service_name a service name to be checked
+ * @return True if The service name meets the naming conventions of a load balancing service.FORWARD_MANAGEMENT
+ *   otherwise False.
+ */
 bool
 is_load_balancing_service(const std::string & base_service_name, const std::string & service_name);
 

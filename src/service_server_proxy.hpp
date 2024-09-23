@@ -23,6 +23,9 @@
 
 #include "data_queues.hpp"
 
+/**
+ * @brief Service server proxy to handle all service clients
+ */
 class ServiceServerProxy : public std::enable_shared_from_this<ServiceServerProxy>
 {
 public:
@@ -36,10 +39,21 @@ public:
     RequestReceiveQueue::SharedPtr & request_queue);
   ~ServiceServerProxy();
 
+  /**
+   * @brief Send a response to the load balancing service client.
+   *
+   * @param request_id Shared pointer to rmw_request_id_t
+   * @param response Untyped response message
+   */
   void send_response(
     const SharedRequestID & request_id,
     rclcpp::GenericService::SharedResponse response);
 
+  /**
+   * @brief Get service name of load balancing service server proxy
+   *
+   * @return The service name of load balancing service server proxy
+   */
   const char * get_service_name();
 
 private:

@@ -26,6 +26,9 @@
 #include <rclcpp/rclcpp.hpp>
 #include <rmw/types.h>
 
+/**
+ * @brief Provide basic queue management functionality.
+ */
 template<typename T1, typename T2, typename T3>
 class QueueBase {
 public:
@@ -89,7 +92,7 @@ using SharedRequestMsg = std::shared_ptr<void>;
 using SharedResponseMsg = std::shared_ptr<void>;
 
 // The queue for Service Server proxy to save received request from real service client
-// std::shared_ptr<rmw_request_id_t> (WRITE_GUID + sequence), Not_Used, request
+// std::shared_ptr<rmw_request_id_t>, Not_Used, request
 using RequestReceiveQueue =
   class QueueBase<SharedRequestID, int64_t, SharedRequestMsg>;
 

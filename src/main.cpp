@@ -22,8 +22,8 @@
 #include "rclcpp/logging.hpp"
 
 #include "data_queues.hpp"
-#include "load_balancing_process.hpp"
-#include "message_forward_manager.hpp"
+#include "forward_management.hpp"
+#include "message_forward_process.hpp"
 #include "service_client_proxy_manager.hpp"
 #include "service_server_proxy.hpp"
 
@@ -123,7 +123,7 @@ int main(int argc, char * argv[])
   if (load_balancing_strategy.empty()) {
     load_balancing_strategy = "round_robin";
   } else {
-    if (!LoadBalancingProcess::supported_load_balancing_strategy.count(load_balancing_strategy)) {
+    if (!ForwardManagement::supported_load_balancing_strategy.count(load_balancing_strategy)) {
       RCLCPP_ERROR(logger,
         "Invaild strategy name \"%s\".\nPlease use one of \"round_robin\", "
         "\"less_requests\" and \"less_response_time\" as strategy name",
@@ -151,19 +151,29 @@ int main(int argc, char * argv[])
   auto request_queue = std::make_shared<RequestReceiveQueue>();
   auto response_queue = std::make_shared<ResponseReceiveQueue>();
 
-  auto load_balancing_process = std::make_shared<LoadBalancingProcess>(
-    LoadBalancingProcess::supported_load_balancing_strategy[load_balancing_strategy]);
+  auto forward_management = std::make_shared<ForwardManagement>(
+    ForwardManagement::supported_load_balancing_strategy[load_balancing_strategy]);
 
   auto client_proxy_manager =
     std::make_shared<ServiceClientProxyManager>(
       service_name, service_type, node, response_queue, std::chrono::seconds(interval));
 
+  // When a new service server is added or removed, the corresponding client proxy will be created
+  // and removed. ServiceClientProxyManager will notify the change to ForwardManagement.
+  client_proxy_manager->set_client_proxy_change_callback(
+    [&forward_management](ServiceClientProxyManager::SharedClientProxy & cli_proxy) -> bool {
+      return forward_management->register_client_proxy(cli_proxy);
+    },
+    [&forward_management](ServiceClientProxyManager::SharedClientProxy & cli_proxy) -> bool {
+      return forward_management->unregister_client_proxy(cli_proxy);
+    });
+
   auto service_proxy =
     std::make_shared<ServiceServerProxy>(service_name, service_type, node, request_queue);
 
-  auto message_forward_manager =
-    std::make_shared<MessageForwardManager>(
-      service_proxy, client_proxy_manager, load_balancing_process, request_queue, response_queue);
+  auto message_forward_process =
+    std::make_shared<MessageForwardProcess>(
+      service_proxy, client_proxy_manager, forward_management, request_queue, response_queue);
 
   // Start to discovery service server
   client_proxy_manager->start_discovery_service_servers_thread();
@@ -184,7 +194,7 @@ int main(int argc, char * argv[])
   exec.add_node(node);
   exec.spin();
 
-  // Disable process
+  // Shutdown queue
   request_queue->shutdown();
   response_queue->shutdown();
 
