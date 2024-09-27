@@ -117,7 +117,8 @@ ServiceClientProxyManager::check_service_server_change()
       continue;
     }
 
-    if (is_load_balancing_service(base_service_name_, service_name)) {
+    if (is_load_balancing_service(base_service_name_, service_name)
+      && node_->count_services(service_name) != 0) {
       matched_service_name_list.emplace_back(service_name);
     }
   }
