@@ -103,7 +103,7 @@ int main(int argc, char * argv[])
   } else {
     if (service_name[0] == '-') {
       RCLCPP_ERROR(logger,
-        "Invaild service name \"%s\".", service_name.c_str());
+        "Invalid service name \"%s\".", service_name.c_str());
       FAIL_RETURN;
     }
   }
@@ -115,7 +115,7 @@ int main(int argc, char * argv[])
   } else {
     if (service_type[0] == '-') {
       RCLCPP_ERROR(logger,
-        "Invaild service type \"%s\".", service_type.c_str());
+        "Invalid service type \"%s\".", service_type.c_str());
       FAIL_RETURN;
     }
   }
@@ -125,7 +125,7 @@ int main(int argc, char * argv[])
   } else {
     if (!ForwardManagement::supported_load_balancing_strategy.count(load_balancing_strategy)) {
       RCLCPP_ERROR(logger,
-        "Invaild strategy name \"%s\".\nPlease use one of \"round_robin\", "
+        "Invalid strategy name \"%s\".\nPlease use one of \"round_robin\", "
         "\"less_requests\" and \"less_response_time\" as strategy name",
         load_balancing_strategy.c_str());
       FAIL_RETURN;
@@ -140,7 +140,7 @@ int main(int argc, char * argv[])
       interval = static_cast<uint32_t>(std::stoul(interval_str));
     } catch (...) {
       RCLCPP_ERROR(logger,
-        "Invaild input interval \"%s\".", interval_str.c_str());
+        "Invalid input interval \"%s\".", interval_str.c_str());
       FAIL_RETURN;
     }
   }
@@ -182,7 +182,7 @@ int main(int argc, char * argv[])
     "\n   Load balancing service name: %s\n"
     "                  Service type: %s\n"
     "       Load balancing strategy: %s\n"
-    "  Interval to discovery server: %ds\n"
+    "  Interval of server discovery: %ds\n"
     "------------------------------\n"
     "Service client remap service name to %s\n"
     "Service server remap service name to %s/XXX\n"

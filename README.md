@@ -41,7 +41,7 @@ After run, you will get the below output
    Load balancing service name: /load_balancing/add_two_ints
                   Service type: example_interfaces/srv/AddTwoInts
        Load balancing strategy: less_requests
-  Interval to discovery server: 1s
+  Interval of server discovery: 1s
 ------------------------------
 Service client remap service name to /load_balancing/add_two_ints
 Service server remap service name to /load_balancing/add_two_ints/XXX
