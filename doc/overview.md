@@ -72,13 +72,13 @@ $ ros2 run load_balancing_service load_balancing_service -s add_two_ints -t exam
   Interval to discovery server: 1s
 ------------------------------
 Service client remap service name to /load_balancing/add_two_ints
-Service server remap service name to /load_balancing/add_two_ints/s1
+Service server remap service name to /load_balancing/add_two_ints/XXX
 ```
 
 It provides hints for the prefixed service names where clients and servers can connect.
 
 - service client should remap service name to "/load_balancing/add_two_ints".
-- service server should remap service name to "/load_balancing/add_two_ints/XXX". (`XXX` is user configuration with service backend.)
+- service server should remap service name to "/load_balancing/add_two_ints/XXX". (`XXX` needs to be configured by user with service backend.)
 
 ---
 
