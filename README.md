@@ -1,7 +1,11 @@
 # ros2_load_balancing_service (In development)
+
 This package helps ROS2 services implement load balancing functionality.
 
+see [overview slide deck](https://raw.githack.com/Barry-Xu-2018/ros2_load_balancing_service/main/doc/overview.html) for more information.
+
 # How to build load balancing service application
+
 In ROS2 environment (such as Jazzy, rolling)
 
 Use rolling as example
@@ -18,12 +22,16 @@ $ colcon build
 Use `add_two_ints_server` (service server) and `add_two_ints_client_async` (service client) as an example to introduce how to use load balancing service application
 
 ## launch Load balancing service application
+
 Load balancing service application needs to run first.
+
 ```bash
 $ source /PATH/TO/ros2_ws/install/setup.bash
 $ ros2 run load_balancing_service load_balancing_service -s add_two_ints -t example_interfaces/srv/AddTwoInts --strategy less_requests -i 1
 ```
+
 The application parameters are introduced as follows
+
 ```
 Usage:
     /root/ros2_ws/install/load_balancing_service/lib/load_balancing_service/load_balancing_service [-h|--help] [-s|--service-name SERVICE_NAME] [-t|--service-type SERVICE_TYPE] [--strategy XXX] [-i|--interval TIME]
@@ -37,6 +45,7 @@ Usage:
 ```
 
 After run, you will get the below output
+
 ```
    Load balancing service name: /load_balancing/add_two_ints
                   Service type: example_interfaces/srv/AddTwoInts
@@ -53,21 +62,25 @@ Service server remap service name to /load_balancing/add_two_ints/XXX
 The service server can refer to the above hint in log output to remap the service name for using the load balancing service.  
 Assume we start with 2 service servers. Of course, you can add service servers at any time.  
 In a new terminal,
+
 ```bash
 $ source /opt/ros/rolling/setup.bash
 $ ros2 run demo_nodes_cpp add_two_ints_server --ros-args -r add_two_ints:=load_balancing/add_two_ints/s1
 ```
+
 In another new terminal,
+
 ```bash
 $ source /opt/ros/rolling/setup.bash
 $ ros2 run demo_nodes_cpp add_two_ints_server --ros-args -r add_two_ints:=load_balancing/add_two_ints/s2
 ```
-Note that you must use different name under load_balancing/add_two_ints/.  
 
+Note that you must use different name under load_balancing/add_two_ints/.
 
 ## launch service client
 
 We can run any number of service clients to connect to the service.
+
 ```bash
 $ source /opt/ros/rolling/setup.bash
 $ ros2 run demo_nodes_cpp add_two_ints_client_async --ros-args -r add_two_ints:=load_balancing/add_two_ints

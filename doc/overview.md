@@ -1,6 +1,9 @@
 ---
 marp: true
 theme: default
+header: "__ROS 2 Service Load-Balancing__"
+footer: "[Barry-Xu-2018@github](https://github.com/Barry-Xu-2018)"
+_backgroundColor: white
 _class: lead
 paginate: true
 ---
@@ -11,23 +14,17 @@ section {
 }
 </style>
 
-![bg left:40% 80%](img/rolling.png)
+![bg right:40% 80%](img/rolling.png)
 
-
-# ROS2 Load Balancing Service
+# [ROS 2 Load Balancing Service](https://github.com/Barry-Xu-2018/ros2_load_balancing_service)
 
 ---
 
-<style scoped>
-section {
-    font-size: 25px;
-}
-</style>
-
 # Objective
 
-- Support multiple service servers on the same service path to implement redundancy and load-balancing.
-- Existing ROS2 service server/client programs can be used without code modification.
+- ROS 2 service load-balancing in application layer without protocol change.
+- Support multiple service servers on the same service path to have robustness and load-balancing mechanism.
+- Scale / Offload ROS 2 service server/client application with remapping but code modification.
 
 ---
 
@@ -37,14 +34,7 @@ section {
 
 ---
 
-<style scoped>
-section {
-    font-size: 20px;
-}
-</style>
-
-# How to use
-
+# [How to use](https://github.com/Barry-Xu-2018/ros2_load_balancing_service?tab=readme-ov-file#how-to-run)
 
 ```bash
 Usage:
@@ -58,32 +48,21 @@ Usage:
                   If not set, default is 1s.
 ```
 
-The following parameters are required to start the load balancing service application.
+---
 
-- Service name
-  This is the original service name. The service server proxy adds a fixed prefix "load_balancing", so the proxy service name becomes "load_balancing/SERVICE_NAME".
-- Service Type
-  such as "example_interfaces/srv/AddTwoInts"
-- Strategy [Optional]
-  The strategy for load balancing. Currently, 3 strategy modes are supported. They are "round_robin", "less_requests" and "less_response_time". The default strategy is round_robin.
-- Interval [Optional]
-  This parameter sets how often the service server discovery action is performed. The default interval is 1 second.
+# Configuration Parameters
+
+- `Service Name`: This is the original service name. The service server proxy adds a fixed prefix "load_balancing", so the proxy service name becomes "load_balancing/SERVICE_NAME".
+- `Service Type`: e.g) "example_interfaces/srv/AddTwoInts"
+- `Strategy(optional)`: Strategy for load balancing. "round_robin"(default), "less_requests" and "less_response_time".
+- `Interval(Optinoal)`: Duration(default 1 sec) how often the service server discovery action is performed.
 
 ---
 
 <!-- _header: '*An example to run load balancing service application*' -->
 
-<style scoped>
-section {
-    font-size: 20px;
-}
-</style>
+# [Example](https://github.com/ros2/demos/tree/rolling/demo_nodes_cpp/src/services)
 
-# An example
-
-Use demo https://github.com/ros2/demos/tree/rolling/demo_nodes_cpp/src/services as an example.  
-
-At first, run load balancing service application in a terminal
 ```bash
 $ ros2 run load_balancing_service load_balancing_service -s add_two_ints -t example_interfaces/srv/AddTwoInts --strategy round_robin -i 1
 [INFO] [1727418589.343051995] [main]: 
@@ -95,36 +74,39 @@ $ ros2 run load_balancing_service load_balancing_service -s add_two_ints -t exam
 Service client remap service name to /load_balancing/add_two_ints
 Service server remap service name to /load_balancing/add_two_ints/XXX
 ```
-The output log will provide hints for the service names that service clients and service servers need to use.  
-- For service client, it should remap service name to "/load_balancing/add_two_ints".  
-- For service server, it should remap service name to "/load_balancing/add_two_ints/XXX". "XXX" is specified by user. Such as "/load_balancing/add_two_ints/s1".
+
+It provides hints for the prefixed service names where clients and servers can connect.
+
+- service client should remap service name to "/load_balancing/add_two_ints".
+- service server should remap service name to "/load_balancing/add_two_ints/XXX". (`XXX` needs to be configured by user with service backend.)
 
 ---
 
 <!-- _header: '*An example to run service server and service client*' -->
 
-<style scoped>
-section {
-    font-size: 20px;
-}
-</style>
+## Start 2 service servers backend
 
-## Run 2 service servers
+- Run service server backend with `s1`.
 
-Open a terminal, run the below command
 ```
 $ ros2 run demo_nodes_cpp add_two_ints_server --ros-args -r add_two_ints:=load_balancing/add_two_ints/s1
 ```
 
-Open another terminal, run the below command
+- Run service server backend with `s2`.
+
 ```
 $ ros2 run demo_nodes_cpp add_two_ints_server --ros-args -r add_two_ints:=load_balancing/add_two_ints/s2
 ```
 
-## Run 10 service clients
+Those service backends are discovered and connected by service load-balancer.
+
+---
+
+## Start 10 service clients
 
 Open another terminal, run the this script
-```
+
+```bash
 $ cat run_clients.sh
 #!/bin/bash
 
@@ -134,19 +116,11 @@ do
 done
 ```
 
-**Eventually, you will see logs that 5 requests have been received in the two terminals running the service server.**
+**You will see logs that 5 requests have been received in the two terminals running the service server.**
 
 ---
 
-<!-- _footer: '[Barry-Xu-2018@github](https://github.com/Barry-Xu-2018)' -->
-
-<style scoped>
-section {
-    font-size: 25px;
-}
-</style>
-
-![bg left 40% 40%](img/address_QR.png)
+![bg right 40% 40%](img/address_QR.png)
 
 ## Project repository
 
