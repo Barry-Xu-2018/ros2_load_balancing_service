@@ -32,7 +32,7 @@
 template<typename T1, typename T2, typename T3>
 class QueueBase {
 public:
-  using Data_Type = std::tuple<T1, T2, T3>;
+  using DataType = std::tuple<T1, T2, T3>;
   using SharedPtr = std::shared_ptr<QueueBase<T1, T2, T3>>;
 
   QueueBase() = default;
@@ -46,17 +46,20 @@ public:
 
     {
       std::lock_guard<std::mutex> lock(queue_mutex_);
-      queue_.emplace(Data_Type(v1, v2, v3));
+      queue_.emplace(DataType(v1, v2, v3));
     }
     cv_.notify_one();
   }
 
-  std::optional<Data_Type> out_queue(void)
+  std::optional<DataType> out_queue(void)
   {
     if (shutdown_.load()) {
       return std::nullopt;
     } else {
       std::lock_guard<std::mutex> lock(queue_mutex_);
+      if (queue_.size() == 0) {
+        return std::nullopt;
+      }
       auto data = queue_.front();
       queue_.pop();
       return data;
@@ -77,9 +80,14 @@ public:
     cv_.notify_one();
   }
 
+  size_t queue_size() {
+    std::lock_guard<std::mutex> lock(queue_mutex_);
+    return queue_.size();
+  }
+
 private:
   std::mutex queue_mutex_;
-  std::queue<Data_Type> queue_;
+  std::queue<DataType> queue_;
 
   std::mutex cond_mutex_;
   std::condition_variable cv_;
