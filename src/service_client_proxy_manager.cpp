@@ -34,9 +34,7 @@ ServiceClientProxyManager::ServiceClientProxyManager(
 
 ServiceClientProxyManager::~ServiceClientProxyManager()
 {
-  thread_exit_.store(true);
-  send_request_to_check_service_servers();
-  discovery_service_server_thread_.join();
+  stop_discovery_thread_running();
 }
 
 void
@@ -44,7 +42,7 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
 {
   auto discovery_service_server_thread =
     [this](){
-      while (check_thread_running()) {
+      while (thread_exit_.load() == false) {
         // Return new service server list and removed service server list
         auto change_info = check_service_server_change();
 
@@ -63,7 +61,7 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
         // found removed load balancing service
         for (auto removed_service: change_info.second) {
           auto client_proxy = get_created_client_proxy(removed_service);
-          if (unregister_client_proxy(client_proxy)) {
+          if (client_proxy != nullptr && unregister_client_proxy(client_proxy)) {
             remove_load_balancing_service(removed_service);
             RCLCPP_INFO(
               logger_,
@@ -74,6 +72,7 @@ ServiceClientProxyManager::start_discovery_service_servers_thread()
 
         wait_for_request_to_check_service_servers();
       }
+      RCLCPP_INFO(logger_, "Discovery service server thread exit.");
     };
 
   discovery_service_server_thread_ = std::thread(discovery_service_server_thread);
@@ -97,9 +96,19 @@ ServiceClientProxyManager::set_client_proxy_change_callback(
 }
 
 bool
-ServiceClientProxyManager::check_thread_running(void)
+ServiceClientProxyManager::is_discovery_thread_running(void)
 {
-  return !thread_exit_.load();
+  return discovery_service_server_thread_.joinable();
+}
+
+void
+ServiceClientProxyManager::stop_discovery_thread_running(void)
+{
+  thread_exit_.store(true);
+  send_request_to_check_service_servers();
+  if (discovery_service_server_thread_.joinable()) {
+      discovery_service_server_thread_.join();
+  }
 }
 
 std::pair<std::vector<std::string>, std::vector<std::string>>
@@ -171,7 +180,11 @@ ServiceClientProxyManager::SharedClientProxy
 ServiceClientProxyManager::get_created_client_proxy(const std::string & service_name)
 {
   std::lock_guard<std::mutex> lock(registered_service_servers_info_mutex_);
-  return registered_service_servers_info_[service_name];
+  if (registered_service_servers_info_.count(service_name)) {
+    return registered_service_servers_info_[service_name];
+  } else {
+    return nullptr;
+  }
 }
 
 bool

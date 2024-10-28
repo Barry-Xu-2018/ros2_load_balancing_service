@@ -99,34 +99,16 @@ public:
   start_discovery_service_servers_thread();
 
   /**
-   * @brief Check the flag indicating whether the thread is running.
-   *
-   * @return True if thread keep running, False if thread need to terminate.
-   */
-  bool
-  check_thread_running(void);
-
-  /**
-   * @brief Check for changes in the load balancing service server.
-   *
-   * @return return two vectors. One stores the names of all added service servers and the other
-   *   stores the names of all disappeared service servers.
-   */
-  std::pair<std::vector<std::string>, std::vector<std::string>>
-  check_service_server_change();
-
-  /**
-   * @brief Record the name of a newly added service server and its corresponding service client
-   *   proxy.
-   * These records are maintained by the ServiceClientProxyManager itself.
-   *
-   * @param new_services A new load balancing service name
-   * @param client_proxy Corresponding service client proxy
+   * @brief Set a flag to terminate discovery service servers thread
    */
   void
-  add_new_load_balancing_service(
-    const std::string & new_services,
-    SharedClientProxy & client_proxy);
+  stop_discovery_thread_running(void);
+
+  /**
+   * @brief Check if discovery service servers thread is launched
+   */
+  bool
+  is_discovery_thread_running(void);
 
   /**
    * @brief Remove a record of service server name and its corresponding service client proxy.
@@ -137,19 +119,18 @@ public:
   void
   remove_load_balancing_service(const std::string & new_services);
 
-  // Discovery thread will use below 2 functions to notify load balancing service server change to
-  // ForwardManagement.
-  bool
-  register_new_client_proxy(SharedClientProxy & cli_proxy);
-  bool
-  unregister_client_proxy(SharedClientProxy & cli_proxy);
-
-  // Control when the discovery operation needs to be executed in discovery thread
-  void
-  wait_for_request_to_check_service_servers();
+  /**
+   * @brief Activate a discovery operation once in the discovery thread.
+   */
   void
   send_request_to_check_service_servers();
 
+  /**
+   * @brief Return the corresponding service client proxy based on the load balancing service name.
+   *
+   * @param service_name load balancing service name
+   * @return service client proxy if found, otherwise nullptr
+   */
   SharedClientProxy
   get_created_client_proxy(const std::string & service_name);
 
@@ -187,13 +168,46 @@ private:
   std::unordered_map<u_int64_t,
     std::pair<SharedClientProxy, int64_t>> client_proxy_futures_with_info_;
 
+  /**
+   * @brief Check for changes in the load balancing service server.
+   *
+   * @return return two vectors. One stores the names of all added service servers and the other
+   *   stores the names of all disappeared service servers.
+   */
+  std::pair<std::vector<std::string>, std::vector<std::string>>
+  check_service_server_change();
+
   void
   discovery_service_server_thread(ServiceClientProxyManager::SharedPtr cli_proxy_mgr);
+
+  // Discovery thread will use below 2 functions to notify load balancing service server change to
+  // ForwardManagement.
+  bool
+  register_new_client_proxy(SharedClientProxy & cli_proxy);
+  bool
+  unregister_client_proxy(SharedClientProxy & cli_proxy);
+
+  /**
+   * @brief Record the name of a newly added service server and its corresponding service client
+   *   proxy.
+   * These records are maintained by the ServiceClientProxyManager itself.
+   *
+   * @param new_services A new load balancing service name
+   * @param client_proxy Corresponding service client proxy
+   */
+  void
+  add_new_load_balancing_service(
+    const std::string & new_services,
+    SharedClientProxy & client_proxy);
 
   void
   service_client_callback(rclcpp::GenericClient::SharedFuture future, u_int64_t send_index);
 
-  uint64_t get_send_index();
+  uint64_t
+  get_send_index();
+
+  void
+  wait_for_request_to_check_service_servers();
 };
 
 #endif  // SERVICE_CLIENT_PROXY_MANAGER_HPP_
