@@ -1,6 +1,6 @@
 find_package(ament_cmake_gtest REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(test_msgs REQUIRED)
+find_package(std_srvs REQUIRED)
 
 # finding gtest once in the highest scope
 # prevents finding it repeatedly in each local scope
@@ -21,4 +21,4 @@ ament_add_gtest(test_forward_management
   test_forward_management.cpp
   ../src/forward_management.cpp
 )
-ament_target_dependencies(test_forward_management rclcpp test_msgs)
+ament_target_dependencies(test_forward_management rclcpp std_srvs)

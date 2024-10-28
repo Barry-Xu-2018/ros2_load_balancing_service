@@ -16,7 +16,7 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "test_msgs/srv/empty.hpp"
+#include "std_srvs/srv/empty.hpp"
 
 #include "../src/forward_management.hpp"
 
@@ -38,11 +38,11 @@ protected:
     node_ = std::make_shared<rclcpp::Node>("test_node",
       rclcpp::NodeOptions().start_parameter_services(false));
     client_proxy1_ = node_->create_generic_client(
-      "/load_balancing/test_service/s1", "test_msgs/srv/Empty");
+      "/load_balancing/test_service/s1", "std_srvs/srv/Empty");
     client_proxy2_ = node_->create_generic_client(
-      "/load_balancing/test_service/s2", "test_msgs/srv/Empty");
+      "/load_balancing/test_service/s2", "std_srvs/srv/Empty");
     client_proxy3_ = node_->create_generic_client(
-      "/load_balancing/test_service/s3", "test_msgs/srv/Empty");
+      "/load_balancing/test_service/s3", "std_srvs/srv/Empty");
   }
 
   void TearDown()
