@@ -16,8 +16,6 @@
 
 #include <rclcpp/rclcpp.hpp>
 
-#include "std_srvs/srv/empty.hpp"
-
 #include "../src/forward_management.hpp"
 
 class TestForwardManagement : public ::testing::Test
