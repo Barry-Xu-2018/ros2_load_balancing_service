@@ -22,3 +22,9 @@ ament_add_gtest(test_forward_management
   ../src/forward_management.cpp
 )
 ament_target_dependencies(test_forward_management rclcpp std_srvs)
+
+ament_add_gtest(test_service_server_proxy
+  test_service_server_proxy.cpp
+  ../src/service_server_proxy.cpp
+)
+ament_target_dependencies(test_service_server_proxy rclcpp std_srvs)
