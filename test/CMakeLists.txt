@@ -28,3 +28,10 @@ ament_add_gtest(test_service_server_proxy
   ../src/service_server_proxy.cpp
 )
 ament_target_dependencies(test_service_server_proxy rclcpp std_srvs)
+
+ament_add_gtest(test_service_client_proxy_manager
+  test_service_client_proxy_manager.cpp
+  ../src/common.cpp
+  ../src/service_client_proxy_manager.cpp
+)
+ament_target_dependencies(test_service_client_proxy_manager rclcpp std_srvs)
