@@ -33,7 +33,7 @@ TEST(TestDataQueues, test_in_queue_and_wait)
 
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
   int64_t val[3] = {1, 2, 3};
-  test_queue.in_queue(val[0], val[1], val[2]);
+  test_queue.enqueue(val[0], val[1], val[2]);
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
   if (wait_thread.joinable()) {
@@ -50,7 +50,7 @@ TEST(TestDataQueues, test_out_queue)
   std::thread wait_thread([&test_queue, &val](){
     test_queue.wait();
     ASSERT_EQ(test_queue.queue_size(), 1);
-    auto out = test_queue.out_queue();
+    auto out = test_queue.dequeue();
     ASSERT_TRUE(out.has_value());
     EXPECT_EQ(std::get<0>(out.value()), val[0]);
     EXPECT_EQ(std::get<1>(out.value()), val[1]);
@@ -58,7 +58,7 @@ TEST(TestDataQueues, test_out_queue)
   });
 
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
-  test_queue.in_queue(val[0], val[1], val[2]);
+  test_queue.enqueue(val[0], val[1], val[2]);
   std::this_thread::sleep_for(std::chrono::milliseconds(50));
 
   if (wait_thread.joinable()) {
@@ -93,19 +93,19 @@ TEST(TestDataQueues, test_out_order)
     {7, 8, 9}
   };
 
-  test_queue.in_queue(val[0][0], val[0][1], val[0][2]);
-  test_queue.in_queue(val[1][0], val[1][1], val[1][2]);
-  test_queue.in_queue(val[2][0], val[2][1], val[2][2]);
+  test_queue.enqueue(val[0][0], val[0][1], val[0][2]);
+  test_queue.enqueue(val[1][0], val[1][1], val[1][2]);
+  test_queue.enqueue(val[2][0], val[2][1], val[2][2]);
 
   for (int i = 0; i < 3; i++) {
-    auto out = test_queue.out_queue();
+    auto out = test_queue.dequeue();
     EXPECT_TRUE(out.has_value());
     EXPECT_EQ(std::get<0>(out.value()), val[i][0]);
     EXPECT_EQ(std::get<1>(out.value()), val[i][1]);
     EXPECT_EQ(std::get<2>(out.value()), val[i][2]);
   }
 
-  auto out = test_queue.out_queue();
+  auto out = test_queue.dequeue();
   EXPECT_FALSE(out.has_value());
 }
 
@@ -121,9 +121,9 @@ TEST(TestDataQueues, test_queue_size)
     {7, 8, 9}
   };
 
-  test_queue.in_queue(val[0][0], val[0][1], val[0][2]);
-  test_queue.in_queue(val[1][0], val[1][1], val[1][2]);
-  test_queue.in_queue(val[2][0], val[2][1], val[2][2]);
+  test_queue.enqueue(val[0][0], val[0][1], val[0][2]);
+  test_queue.enqueue(val[1][0], val[1][1], val[1][2]);
+  test_queue.enqueue(val[2][0], val[2][1], val[2][2]);
 
   EXPECT_EQ(test_queue.queue_size(), 3);
 }

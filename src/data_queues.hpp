@@ -38,7 +38,7 @@ public:
   QueueBase() = default;
   ~QueueBase() = default;
 
-  void in_queue(T1 & v1, T2 & v2, T3 & v3)
+  void enqueue(T1 & v1, T2 & v2, T3 & v3)
   {
     if (shutdown_.load()) {
       return;
@@ -51,7 +51,7 @@ public:
     cv_.notify_one();
   }
 
-  std::optional<DataType> out_queue(void)
+  std::optional<DataType> dequeue(void)
   {
     if (shutdown_.load()) {
       return std::nullopt;

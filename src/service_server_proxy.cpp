@@ -57,7 +57,7 @@ void ServiceServerProxy::callback_receive_request(
     request_id->writer_guid[3], request_id->writer_guid[4], request_id->writer_guid[5],
     request_id->writer_guid[6], request_id->writer_guid[7], request_id->sequence_number);
 #endif
-  request_queue_->in_queue(request_id, request_id->sequence_number, request);
+  request_queue_->enqueue(request_id, request_id->sequence_number, request);
 }
 
 void ServiceServerProxy::send_response(

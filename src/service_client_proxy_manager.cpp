@@ -262,7 +262,7 @@ ServiceClientProxyManager::service_client_callback(
   }
 
   // Put to response queue and MessageForwardManager handle it.
-  response_queue_->in_queue(
+  response_queue_->enqueue(
     client_proxy_and_sequence.first,
     client_proxy_and_sequence.second,
     response);

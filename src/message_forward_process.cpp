@@ -92,7 +92,7 @@ void MessageForwardProcess::handle_request_process(
   {
     request_queue->wait();
 
-    auto ret_value = request_queue->out_queue();
+    auto ret_value = request_queue->dequeue();
     if (!ret_value.has_value()) {
       // Request queue is shutdown, exit request handle thread.
       break;
@@ -160,7 +160,7 @@ void MessageForwardProcess::handle_response_process(
   {
     response_queue->wait();
 
-    auto ret_value = response_queue->out_queue();
+    auto ret_value = response_queue->dequeue();
     if (ret_value == std::nullopt) {
       // Response queue is shutdown, exit response handle thread.
       break;
