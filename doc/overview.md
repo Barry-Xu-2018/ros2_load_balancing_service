@@ -16,7 +16,7 @@ section {
 
 ![bg right:40% 80%](img/rolling.png)
 
-# [ROS 2 Load Balancing Service](https://github.com/Barry-Xu-2018/ros2_load_balancing_service)
+# [ROS 2 Service Load Balancing ](https://github.com/Barry-Xu-2018/service_ros2_load_balancing)
 
 ---
 
@@ -34,11 +34,11 @@ section {
 
 ---
 
-# [How to use](https://github.com/Barry-Xu-2018/ros2_load_balancing_service?tab=readme-ov-file#how-to-run)
+# [How to use](https://github.com/Barry-Xu-2018/ros2_service_load_balancing/blob/main/README.md#how-to-run)
 
 ```bash
 Usage:
-    load_balancing_service [-h|--help] [-s|--service-name SERVICE_NAME] [-t|--service-type SERVICE_TYPE] [--strategy XXX] [-i|--interval TIME]
+    service_load_balancing [-h|--help] [-s|--service-name SERVICE_NAME] [-t|--service-type SERVICE_TYPE] [--strategy XXX] [-i|--interval TIME]
        --strategy choose one of "round_robin", "less_requests" and "less_response_time"
                   If not set, "round_robin" is used as default.
                   "round_robin": select the service server in order.
@@ -64,7 +64,7 @@ Usage:
 # [Example](https://github.com/ros2/demos/tree/rolling/demo_nodes_cpp/src/services)
 
 ```bash
-$ ros2 run load_balancing_service load_balancing_service -s add_two_ints -t example_interfaces/srv/AddTwoInts --strategy round_robin -i 1
+$ ros2 run service_load_balancing service_load_balancing -s add_two_ints -t example_interfaces/srv/AddTwoInts --strategy round_robin -i 1
 [INFO] [1727418589.343051995] [main]: 
    Load balancing service name: /load_balancing/add_two_ints
                   Service type: example_interfaces/srv/AddTwoInts
@@ -124,4 +124,4 @@ done
 
 ## Project repository
 
-https://github.com/barry-Xu-2018/ros2_load_balancing_service/
+https://github.com/barry-Xu-2018/service_ros2_load_balancing/

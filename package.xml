@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>load_balancing_service</name>
+  <name>service_load_balancing</name>
   <version>0.1.0</version>
   <description>This package helps ROS2 services implement load balancing functionality.</description>
   <maintainer email="barry.xu@sony.com">Barry Xu</maintainer>

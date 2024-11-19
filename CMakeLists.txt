@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(load_balancing_service)
+project(service_load_balancing)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -16,7 +16,7 @@ find_package(rclcpp REQUIRED)
 find_package(std_msgs REQUIRED)
 find_package(rosidl_typesupport_introspection_cpp REQUIRED)
 
-add_executable(load_balancing_service
+add_executable(service_load_balancing
   src/common.cpp
   src/forward_management.cpp
   src/message_forward_process.cpp
@@ -24,10 +24,10 @@ add_executable(load_balancing_service
   src/service_server_proxy.cpp
   src/main.cpp
 )
-ament_target_dependencies(load_balancing_service rclcpp)
+ament_target_dependencies(service_load_balancing rclcpp)
 
 install(TARGETS
-  load_balancing_service
+  service_load_balancing
   DESTINATION lib/${PROJECT_NAME}
 )
 
