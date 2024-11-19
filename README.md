@@ -1,8 +1,8 @@
-# ros2_load_balancing_service (In development)
+# ros2_service_load_balancing
 
 This package helps ROS2 services implement load balancing functionality.
 
-see [overview slide deck](https://raw.githack.com/Barry-Xu-2018/ros2_load_balancing_service/main/doc/overview.html) for more information.
+see [overview slide deck](https://raw.githack.com/Barry-Xu-2018/ros2_service_load_balancing/main/doc/overview.html) for more information.
 
 # How to build load balancing service application
 
@@ -12,7 +12,7 @@ Use rolling as example
 ```bash
 $ source /opt/ros/rolling/setup.bash
 $ mkdir -p ros2_ws/src && cd ros2_ws/src
-$ git clone https://github.com/Barry-Xu-2018/ros2_load_balancing_service.git
+$ git clone https://github.com/Barry-Xu-2018/ros2_service_load_balancing.git
 $ cd ..
 $ colcon build
 ```
@@ -21,20 +21,20 @@ $ colcon build
 
 Use `add_two_ints_server` (service server) and `add_two_ints_client_async` (service client) as an example to introduce how to use load balancing service application
 
-## launch Load balancing service application
+## launch service load balancing application
 
-Load balancing service application needs to run first.
+Service load balancing  application needs to run first.
 
 ```bash
 $ source /PATH/TO/ros2_ws/install/setup.bash
-$ ros2 run load_balancing_service load_balancing_service -s add_two_ints -t example_interfaces/srv/AddTwoInts --strategy less_requests -i 1
+$ ros2 run service_load_balancing service_load_balancing -s add_two_ints -t example_interfaces/srv/AddTwoInts --strategy less_requests -i 1
 ```
 
 The application parameters are introduced as follows
 
 ```
 Usage:
-    /root/ros2_ws/install/load_balancing_service/lib/load_balancing_service/load_balancing_service [-h|--help] [-s|--service-name SERVICE_NAME] [-t|--service-type SERVICE_TYPE] [--strategy XXX] [-i|--interval TIME]
+    /root/ros2_ws/install/service_load_balancing/lib/service_load_balancing/service_load_balancing [-h|--help] [-s|--service-name SERVICE_NAME] [-t|--service-type SERVICE_TYPE] [--strategy XXX] [-i|--interval TIME]
        --strategy choose one of "round_robin", "less_requests" and "less_response_time"
                   If not set, "round_robin" is used as default.
                   "round_robin": select the service server in order.
