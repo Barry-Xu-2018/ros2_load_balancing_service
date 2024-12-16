@@ -2,8 +2,8 @@
 Changelog for package service_load_balancing
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Forthcoming
------------
+0.1.1 (2024-12-16)
+------------------
 * Change application name and update related document (`#4 <https://github.com/Barry-Xu-2018/ros2_service_load_balancing/issues/4>`_)
 * Update information in package.xml
 * Change to a more appropriate function name
